@@ -1,0 +1,65 @@
+name: HookPulse
+description: >-
+  A dead-man's-switch for cron jobs and webhooks. You create a monitor and your cron/Stripe/n8n pings its ingest URL on
+  schedule; if pings stop past a tolerated interval, it records a miss and alerts. Explicitly not website uptime
+  monitoring; its stated primary consumer is AI agents. Offers a public REST API, a hosted MCP server, and llms.txt/OKF
+  agent-readable docs, with x402/USDC micropayments for paid actions.
+url: https://raw.githubusercontent.com/api-evangelist/hookpulse/refs/heads/main/apis.yml
+created: '2026-09-05'
+modified: '2026-09-05'
+specificationVersion: '0.21'
+tags:
+  - Monitoring
+  - Observability
+  - Cron
+  - Webhooks
+  - Heartbeat
+  - Dead-mans-switch
+  - Alerting
+  - Status pages
+  - Agent-native
+  - MCP
+  - x402
+  - Micropayments
+apis:
+  - name: HookPulse API
+    description: >-
+      Public REST/HTTP API for heartbeat monitors, ingest URLs, miss detection, alerts, status feeds, auth, billing,
+      credit, and metrics. OpenAPI 3.1.0 with ~31 operations. Also exposes a hosted MCP server with 14 tools and
+      agent-readable llms.txt/OKF docs.
+    humanURL: https://hookpulse.net/api/
+    baseURL: https://hookpulse.net
+    tags:
+      - Monitoring
+      - Observability
+      - Cron
+      - Webhooks
+      - Heartbeat
+      - Dead-mans-switch
+      - Alerting
+      - Status pages
+      - Agent-native
+      - MCP
+      - x402
+      - Micropayments
+    properties:
+      - type: OpenAPI
+        url: https://hookpulse.net/openapi.json
+      - type: MCPServer
+        url: https://hookpulse.net/mcp
+      - type: LLMsTxt
+        url: https://hookpulse.net/llms.txt
+      - type: LLMsTxt
+        url: https://hookpulse.net/llms-full.txt
+      - type: Documentation
+        url: https://hookpulse.net/okf/index.md
+      - type: Documentation
+        url: https://hookpulse.net/.well-known/api-catalog
+maintainers:
+  - FN: HookPulse
+    url: https://hookpulse.net/
+generated:
+  by: apis.io/add
+  model: claude-opus-4-8
+  confidence: 97
+  at: '2026-09-05T11:48:39.115Z'
