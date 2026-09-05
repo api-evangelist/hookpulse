@@ -1,0 +1,19 @@
+generated: '2026-09-05'
+method: generated
+note: >-
+  The provider references a first-party skill (.agents/skills/hookpulse/SKILL.md in its parity
+  convention) but it is not publicly retrievable (probed 2026-09-05: 404) — these three are
+  generated from the OpenAPI, /api/ index and llms.txt, grounded in real operationIds.
+skills:
+  - file: hookpulse-monitor-a-cron-job.md
+    name: Monitor a cron job with a dead-man switch
+    api: openapi/hookpulse-openapi.json
+    operations: [create_guest, create_endpoint, ping_ingest, get_endpoint, list_events, delete_endpoint]
+  - file: hookpulse-publish-status-feed.md
+    name: Publish a public status feed
+    api: openapi/hookpulse-openapi.json
+    operations: [status_feed_url, get_s_by_token_json, get_s_by_token_rss, status_feed_rotate]
+  - file: hookpulse-pay-with-x402.md
+    name: Pay for actions with x402
+    api: openapi/hookpulse-openapi.json
+    operations: [billing, create_endpoint, post_api_credito, get_api_credito, post_api_auth_start, post_api_auth_verify]

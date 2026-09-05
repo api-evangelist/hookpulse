@@ -1,0 +1,108 @@
+generated: '2026-09-05'
+method: derived
+source: mcp/hookpulse-mcp-tools.json + openapi/hookpulse-openapi.json
+note: >-
+  Every MCP tool name matches its backing OpenAPI operationId verbatim — the provider states the MCP
+  "has no backend of its own"; each tool is a call on the public REST API. The live tools/list was
+  probed anonymously (200), so bindings are confirmed against real inputSchemas, not guessed.
+surfaces:
+  openapi: openapi/hookpulse-openapi.json
+  mcp:
+    url: https://hookpulse.net/mcp
+    gated: false
+  graphql: null
+coverage:
+  tools_named: 14
+  tools_bound: 14
+  mcp_only: 0
+  rest_operations_total: 31
+  rest_operations_with_tool: 14
+crosswalk:
+  - tool: api_index
+    category: discovery
+    rest: [api_index]
+    binding: rest
+    confidence: high
+  - tool: health
+    category: discovery
+    rest: [health]
+    binding: rest
+    confidence: high
+  - tool: create_guest
+    category: auth
+    rest: [create_guest]
+    binding: rest
+    confidence: high
+  - tool: list_endpoints
+    category: monitors
+    rest: [list_endpoints]
+    binding: rest
+    confidence: high
+  - tool: create_endpoint
+    category: monitors
+    rest: [create_endpoint]
+    binding: rest
+    confidence: high
+  - tool: get_endpoint
+    category: monitors
+    rest: [get_endpoint]
+    binding: rest
+    confidence: high
+  - tool: delete_endpoint
+    category: monitors
+    rest: [delete_endpoint]
+    binding: rest
+    confidence: high
+  - tool: list_events
+    category: monitors
+    rest: [list_events]
+    binding: rest
+    confidence: high
+  - tool: ping_ingest
+    category: ingest
+    rest: [ping_ingest]
+    binding: rest
+    confidence: high
+  - tool: billing
+    category: billing
+    rest: [billing]
+    binding: rest
+    confidence: high
+  - tool: status_feed_url
+    category: status
+    rest: [status_feed_url]
+    binding: rest
+    confidence: high
+  - tool: status_feed_rotate
+    category: status
+    rest: [status_feed_rotate]
+    binding: rest
+    confidence: high
+  - tool: list_templates
+    category: discovery
+    rest: [list_templates]
+    binding: rest
+    confidence: high
+  - tool: contact
+    category: support
+    rest: [contact]
+    binding: rest
+    confidence: high
+mcp_only: []
+rest_only:
+  - capability: discovery documents
+    operations: [get_okf_by_arquivo, get_well_known_by_arquivo, get_apis_json]
+  - capability: MCP transport itself
+    operations: [post_mcp]
+  - capability: monitor editing
+    operations: [patch_api_endpoints_by_id]
+  - capability: ingest webhook variant
+    operations: [post_in_by_id]
+  - capability: public status dashboards
+    operations: [get_s_by_token_json, get_s_by_token_rss]
+  - capability: account auth (e-mail OTP sessions)
+    operations: [post_api_auth_start, post_api_auth_verify, post_api_auth_claim, post_api_auth_logout, get_api_me]
+  - capability: prepaid credit
+    operations: [post_api_credito, get_api_credito]
+  - capability: telemetry
+    operations: [post_api_visit, get_api_metrics]

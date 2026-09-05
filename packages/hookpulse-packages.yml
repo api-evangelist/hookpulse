@@ -1,0 +1,12 @@
+generated: '2026-09-05'
+method: searched
+source: registry.npmjs.org + pypi.org + https://hookpulse.net/ (probed 2026-09-05)
+packages: []
+note: >-
+  No first-party client libraries. The provider is deliberately zero-install — the MCP server is
+  remote (Streamable HTTP, "plugs into the client with nothing to install") and integration is
+  plain curl/cron/n8n snippets served at /api/templates. IMPORTANT NAME COLLISION: npm package
+  "hookpulse" (1.0.1, 2026-01-25) and PyPI "hookpulse" (1.0.2) exist but belong to a DIFFERENT
+  company — hookpulse.io ("enterprise-grade serverless task scheduling", care@hookpulse.io,
+  github.com/HookPulse/hookpulse-packages) — not this provider (hookpulse.net). They must not be
+  credited or listed as SDKs here.

@@ -1,0 +1,27 @@
+generated: '2026-09-05'
+method: searched
+source: https://hookpulse.net/llms.txt + openapi/hookpulse-openapi.json
+limit_count: 2
+note: >-
+  No global request-rate table is published; abuse control is quota- and price-shaped (free
+  allowances plus x402 402s — see plans/). Two throttles are documented with their runtime signal.
+limits:
+  - scope: per-caller, POST /api/contact
+    limit: 1 free (or paid) message, then throttled
+    window: stated as after the 1st message
+    signal:
+      status: 429
+      headers: [Retry-After]
+    note: >-
+      A human passes Turnstile; an agent without captcha pays $0.10 via x402 for the first message
+      and gets 429 + Retry-After after it.
+  - scope: per-email, POST /api/auth/start and /api/auth/verify (OTP)
+    limit: undocumented threshold
+    window: undocumented
+    signal:
+      status: 429
+    note: The OTP endpoints declare 429 responses in the OpenAPI; the exact threshold is not published.
+quota_signals:
+  - status: 402
+    body: accepts[] (x402)
+    note: quota exhaustion on paid actions signals as HTTP 402, not 429 — retry with X-PAYMENT.

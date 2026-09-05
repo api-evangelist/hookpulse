@@ -1,0 +1,38 @@
+generated: '2026-09-05'
+method: searched
+source: openapi/hookpulse-openapi.json
+docs: https://hookpulse.net/api/
+summary:
+  types:
+  - http
+  api_key_in: []
+  oauth2_flows: []
+  note: >-
+    The OpenAPI declares one bearer scheme, but the /api/ index documents six auth modes the routes
+    actually use — all bearer-token flavors plus anonymous; no OAuth2, no OIDC, no API-key
+    self-service portal. Tokens are minted by the API itself (guest) or by e-mail OTP (session).
+schemes:
+- name: bearerAuth
+  type: http
+  scheme: bearer
+  description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization:
+    Bearer hp_…`. A `sess_…` session also works.'
+  sources:
+  - openapi/hookpulse-openapi.json
+modes:
+- mode: none
+  description: Public, no credential — discovery documents, ingest (/in/:id), billing, templates, metrics, public status dashboards.
+- mode: guest
+  description: >-
+    Guest token from POST /api/guest, sent as X-Guest-Token: hp_… or Authorization: Bearer hp_…;
+    the anonymous owner of monitors. A sess_… session also works on guest routes.
+- mode: session
+  description: 'Authorization: Bearer sess_… from the e-mail OTP flow (POST /api/auth/start → POST /api/auth/verify). Confirming the e-mail grants the 90-day trial.'
+- mode: hook
+  description: >-
+    The monitor's own token in ?token= or X-Hook-Token. Read-only (state and pings) — lets a
+    third-party dashboard watch a monitor without the owner credential.
+- mode: credito
+  description: 'Prepaid credit bearer in Authorization: Bearer cred_… (or X-Credito). A bearer of balance, not an account.'
+- mode: token
+  description: Operator token (METRICS_TOKEN) as Bearer or ?key= — enriches /api/metrics with payment data; operator-only.

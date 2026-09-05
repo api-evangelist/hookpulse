@@ -1,0 +1,32 @@
+overlay: 1.0.0
+info:
+  title: API Evangelist enhancements for HookPulse
+  version: 1.0.0
+extends: openapi/hookpulse-openapi.json
+actions:
+  - target: $.info
+    update:
+      x-apievangelist:
+        generated: '2026-09-05'
+        method: generated
+        provider: hookpulse
+        artifacts:
+          conventions: conventions/hookpulse-conventions.yml
+          errors: errors/hookpulse-problem-types.yml
+          authentication: authentication/hookpulse-authentication.yml
+          crosswalk: mcp/hookpulse-tool-crosswalk.yml
+  - target: $.info
+    update:
+      x-agent-surfaces:
+        mcp: https://hookpulse.net/mcp
+        llms_txt: https://hookpulse.net/llms.txt
+        okf: https://hookpulse.net/okf/index.md
+        apis_json: https://hookpulse.net/apis.json
+        api_catalog: https://hookpulse.net/.well-known/api-catalog
+  - target: $.info
+    update:
+      x-payments:
+        protocol: x402
+        asset: USDC
+        network: base
+        price_sheet: https://hookpulse.net/api/billing

@@ -1,14 +1,35 @@
 name: HookPulse
-description: >-
-  A dead-man's-switch for cron jobs and webhooks. You create a monitor and your cron/Stripe/n8n pings its ingest URL on
-  schedule; if pings stop past a tolerated interval, it records a miss and alerts. Explicitly not website uptime
-  monitoring; its stated primary consumer is AI agents. Offers a public REST API, a hosted MCP server, and llms.txt/OKF
-  agent-readable docs, with x402/USDC micropayments for paid actions.
+description: A dead-man's-switch for cron jobs and webhooks. You create a monitor and your cron/Stripe/n8n pings
+  its ingest URL on schedule; if pings stop past a tolerated interval, it records a miss and alerts. Explicitly
+  not website uptime monitoring; its stated primary consumer is AI agents. Offers a public REST API, a hosted MCP
+  server, and llms.txt/OKF agent-readable docs, with x402/USDC micropayments for paid actions.
 url: https://raw.githubusercontent.com/api-evangelist/hookpulse/refs/heads/main/apis.yml
+image: https://hookpulse.net/icon.svg
 created: '2026-09-05'
 modified: '2026-09-05'
 specificationVersion: '0.21'
 tags:
+- Monitoring
+- Observability
+- Cron
+- Webhooks
+- Heartbeat
+- Dead-mans-switch
+- Alerting
+- Status pages
+- Agent-native
+- MCP
+- x402
+- Micropayments
+apis:
+- name: HookPulse API
+  description: Public REST/HTTP API for heartbeat monitors, ingest URLs, miss detection, alerts, status feeds, auth,
+    billing, credit, and metrics. OpenAPI 3.1.0 with ~31 operations. Also exposes a hosted MCP server with 14 tools
+    and agent-readable llms.txt/OKF docs.
+  image: https://hookpulse.net/icon.svg
+  humanURL: https://hookpulse.net/api/
+  baseURL: https://hookpulse.net
+  tags:
   - Monitoring
   - Observability
   - Cron
@@ -21,45 +42,87 @@ tags:
   - MCP
   - x402
   - Micropayments
-apis:
-  - name: HookPulse API
-    description: >-
-      Public REST/HTTP API for heartbeat monitors, ingest URLs, miss detection, alerts, status feeds, auth, billing,
-      credit, and metrics. OpenAPI 3.1.0 with ~31 operations. Also exposes a hosted MCP server with 14 tools and
-      agent-readable llms.txt/OKF docs.
-    humanURL: https://hookpulse.net/api/
-    baseURL: https://hookpulse.net
-    tags:
-      - Monitoring
-      - Observability
-      - Cron
-      - Webhooks
-      - Heartbeat
-      - Dead-mans-switch
-      - Alerting
-      - Status pages
-      - Agent-native
-      - MCP
-      - x402
-      - Micropayments
-    properties:
-      - type: OpenAPI
-        url: https://hookpulse.net/openapi.json
-      - type: MCPServer
-        url: https://hookpulse.net/mcp
-      - type: LLMsTxt
-        url: https://hookpulse.net/llms.txt
-      - type: LLMsTxt
-        url: https://hookpulse.net/llms-full.txt
-      - type: Documentation
-        url: https://hookpulse.net/okf/index.md
-      - type: Documentation
-        url: https://hookpulse.net/.well-known/api-catalog
+  properties:
+  - type: OpenAPI
+    url: https://hookpulse.net/openapi.json
+  - type: OpenAPI
+    url: openapi/hookpulse-openapi.json
+  - type: MCPServer
+    url: https://hookpulse.net/mcp
+  - type: ToolCrosswalk
+    url: mcp/hookpulse-tool-crosswalk.yml
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms.txt
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms-full.txt
+  - type: Documentation
+    url: https://hookpulse.net/okf/index.md
+  - type: Documentation
+    url: https://hookpulse.net/.well-known/api-catalog
 maintainers:
-  - FN: HookPulse
-    url: https://hookpulse.net/
+- FN: HookPulse
+  url: https://hookpulse.net/
+  email: contato@hookpulse.net
 generated:
   by: apis.io/add
   model: claude-opus-4-8
   confidence: 97
   at: '2026-09-05T11:48:39.115Z'
+x-enrichment:
+  date: '2026-09-05'
+  status: enriched
+  artifacts_added: 28
+  pass: local-v3
+common:
+- type: Website
+  url: https://hookpulse.net
+- type: VulnerabilityDisclosure
+  url: security/hookpulse-vulnerability-disclosure.yml
+- type: Security
+  url: https://hookpulse.net/.well-known/security.txt
+- type: DomainSecurity
+  url: security/hookpulse-domain-security.yml
+- type: AgenticAccess
+  url: agentic-access/hookpulse-agentic-access.yml
+- type: Authentication
+  url: authentication/hookpulse-authentication.yml
+- type: MCPServer
+  url: mcp/hookpulse-mcp.yml
+- type: WellKnown
+  url: well-known/hookpulse-well-known.yml
+- type: SecurityTxt
+  url: well-known/hookpulse-security.txt
+- type: APIsJson
+  url: https://hookpulse.net/apis.json
+- type: LLMsTxt
+  url: llms/hookpulse-llms.txt
+- type: Packages
+  url: packages/hookpulse-packages.yml
+- type: Overlay
+  url: overlays/hookpulse-openapi-overlay.yaml
+- type: Conformance
+  url: conformance/hookpulse-conformance.yml
+- type: ErrorCatalog
+  url: errors/hookpulse-problem-types.yml
+- type: Lifecycle
+  url: lifecycle/hookpulse-lifecycle.yml
+- type: Conventions
+  url: conventions/hookpulse-conventions.yml
+- type: Webhooks
+  url: asyncapi/hookpulse-webhooks.yml
+- type: AgentSkill
+  url: skills/_index.yml
+- type: Plans
+  url: plans/hookpulse-plans-pricing.yml
+- type: RateLimits
+  url: rate-limits/hookpulse-rate-limits.yml
+- type: DataModel
+  url: data-model/hookpulse-data-model.yml
+- type: APIReference
+  url: https://hookpulse.net/api/
+- type: Pricing
+  url: https://hookpulse.net/api/billing
+- type: TermsOfService
+  url: https://hookpulse.net/terms
+- type: PrivacyPolicy
+  url: https://hookpulse.net/privacy

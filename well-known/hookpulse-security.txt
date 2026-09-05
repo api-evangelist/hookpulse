@@ -1,0 +1,4 @@
+Contact: mailto:contato@hookpulse.net
+Expires: 2027-09-05T00:00:00Z
+Preferred-Languages: en, pt
+Canonical: https://hookpulse.net/.well-known/security.txt

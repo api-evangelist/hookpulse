@@ -1,0 +1,70 @@
+generated: '2026-09-05'
+method: searched
+source: https://hookpulse.net/api/ (conventions + auth blocks) + https://hookpulse.net/llms.txt + openapi/hookpulse-openapi.json
+authentication:
+  style: bearer tokens, four flavors + none
+  modes:
+    - none — discovery, ingest (/in/:id), billing, templates, metrics, public status dashboards
+    - guest — X-Guest-Token or Authorization Bearer hp_… (POST /api/guest mints one; the anonymous owner of monitors)
+    - session — Authorization Bearer sess_… from the e-mail OTP flow (auth/start → auth/verify)
+    - hook — the monitor's own read-only token in ?token= or X-Hook-Token (state and pings only, for third-party dashboards)
+    - credito — prepaid credit bearer cred_… (Authorization or X-Credito); a bearer of balance, not an account
+  cross_link: authentication/hookpulse-authentication.yml
+idempotency:
+  coverage: none
+  note: >-
+    No Idempotency-Key header or replay-protection mechanism is documented anywhere on the surface
+    (OpenAPI, /api/ index, llms.txt, OKF). Ingest pings (GET/POST /in/:id) are naturally
+    repeat-safe events, but writes (create_endpoint, post_api_credito, contact) have no documented
+    idempotency contract.
+pagination:
+  style: none
+  note: No pagination parameters documented; list_endpoints and list_events return the latest window.
+request_tracing:
+  note: No request-id header documented.
+versioning:
+  scheme: build-hash (info.version = deployed commit); unversioned paths
+  cross_link: lifecycle/hookpulse-lifecycle.yml
+error_envelope:
+  shape: '{ error, detail? }'
+  cross_link: errors/hookpulse-problem-types.yml
+cors: 'Access-Control-Allow-Origin: * on /api/* (documented at https://hookpulse.net/api/)'
+payments:
+  x402: >-
+    Paid actions return HTTP 402 with accepts[] (x402, USDC on Base mainnet); pay and repeat the
+    same call with X-PAYMENT, or hold prepaid credit (cred_… bearer) that debits per call. Prices
+    live at /api/billing.
+rate_limit_signaling:
+  status: 429
+  headers: [Retry-After]
+  cross_link: rate-limits/hookpulse-rate-limits.yml
+parity: >-
+  Provider-documented convention: any change touching the UI or API updates apidocs, the agent
+  skill, the MCP surface and llms.txt in the same PR.
+reversibility:
+  grade: documented
+  note: >-
+    Reversal paths exist for the main write surface but no reversal windows are stated anywhere in
+    the docs, so this grades as documented, not verified. No refund mechanism is published for
+    x402 payments or prepaid credit.
+  operations:
+    - write: create_endpoint (POST /api/endpoints)
+      reversal: delete_endpoint (DELETE /api/endpoints/{id}) — deactivates the monitor; it stops taking pings and alerting
+      window: not stated
+      docs: https://hookpulse.net/api/
+    - write: patch_api_endpoints_by_id (PATCH /api/endpoints/{id})
+      reversal: re-PATCH with the previous values (no dedicated undo)
+      window: not stated
+      docs: https://hookpulse.net/api/
+    - write: delete_endpoint (DELETE /api/endpoints/{id})
+      reversal: none documented — no restore operation
+      window: null
+      docs: https://hookpulse.net/api/
+    - write: status_feed_rotate (DELETE /api/status-feed)
+      reversal: none — explicitly irreversible; "the previous URL stops working immediately"
+      window: null
+      docs: https://hookpulse.net/api/
+    - write: post_api_credito (x402 credit top-up)
+      reversal: none documented — no refund path published
+      window: null
+      docs: https://hookpulse.net/api/billing

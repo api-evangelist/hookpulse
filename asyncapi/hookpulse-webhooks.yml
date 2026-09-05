@@ -1,0 +1,31 @@
+generated: '2026-09-05'
+method: searched
+source: https://hookpulse.net/api/templates (probed 200) + https://hookpulse.net/llms.txt
+spec_type: Webhooks
+note: >-
+  No AsyncAPI published. The provider does ship a real outbound webhook surface: on a miss (silence
+  past the monitor's interval) HookPulse POSTs a JSON event to the monitor's alert_url (Slack/
+  Discord/n8n-style incoming webhooks; HTTPS only, no localhost), throttled to at most once per 24h
+  per monitor, alongside an optional e-mail alert. The exact payload is published machine-readably
+  at /api/templates and is captured verbatim below.
+webhooks:
+  - name: hookpulse.miss
+    direction: outbound
+    trigger: monitor silence outlasts interval_sec
+    delivery: HTTPS POST to the monitor's alert_url
+    throttle: at most 1 delivery per 24h per monitor
+    constraints: alert_url must be HTTPS; http and localhost are rejected
+    payload_example:
+      type: hookpulse.miss
+      id: YOUR_ID
+      name: nightly-backup
+      last_event_at: null
+      interval_sec: 900
+      miss_count: 1
+      text: '[HookPulse] Miss: nightly-backup'
+      content: '[HookPulse] Miss: nightly-backup'
+      app: https://hookpulse.net
+inbound_note: >-
+  The ingest URLs (GET/POST /in/:id) are the inbound half of the surface — cron jobs and third-party
+  webhooks (Stripe, n8n) ping them to prove liveness; documented in the OpenAPI as ping_ingest /
+  post_in_by_id.

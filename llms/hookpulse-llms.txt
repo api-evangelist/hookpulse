@@ -1,0 +1,78 @@
+# HookPulse
+
+> Dead-man switch: you create an endpoint, the cron/webhook pings `/in/:id`.
+> If the silence outlasts the interval, it counts as a miss: e-mail and/or an HTTPS POST to `alert_url` (at most 1× / 24h). Main client: AI agents.
+> Without paying: sign up and CONFIRM the e-mail — 90 days without the usage paywall
+> (`POST /api/auth/start` → code by e-mail → `POST /api/auth/verify`).
+
+## Discovery
+
+- [API index](https://hookpulse.net/api/)
+- [llms.txt](https://hookpulse.net/llms.txt): this file
+- [OpenAPI](https://hookpulse.net/openapi.json)
+- [Health](https://hookpulse.net/api/health)
+- [Billing](https://hookpulse.net/api/billing)
+- Human UI: **API** button at the top + **Agent resource hub** in the footer (same links).
+
+## Main endpoints
+
+- `GET /okf/:arquivo` — OKF bundle (Open Knowledge Format v0.1): markdown with frontmatter so an agent reads the whole product without parsing HTML. (auth: none)
+- `GET /.well-known/:arquivo` — Machine discovery before the home page: `api-catalog` (RFC 9727, a linkset with the API and the MCP), `security.txt` (RFC 9116) and `mcp-registry-auth` (the official MCP registry key). (auth: none)
+- `GET /apis.json` — APIs.json (apisjson.org, 0.19): the index APIs.io harvests — the API, the MCP, OpenAPI, guide and OKF bundle in one file. Also at `/.well-known/apis.json`. (auth: none)
+- `POST /mcp` — MCP server over HTTP (Streamable HTTP, JSON-RPC 2.0) — plugs into the client with nothing to install. (auth: none)
+- `POST /api/guest` — Creates a guest `hp_…` — it is the anonymous owner of your monitors. (auth: none)
+- `GET /api/endpoints` — Lists the owner's monitors, with the state of each one. (auth: guest)
+- `POST /api/endpoints` — Creates a dead-man switch: silence beyond the interval becomes an alert. (auth: guest)
+- `GET /api/endpoints/:id` — State of one monitor — accepts the owner's token or the monitor's own token. (auth: hook)
+- `PATCH /api/endpoints/:id` — Changes the monitor's name, interval or alert channels. (auth: guest)
+- `DELETE /api/endpoints/:id` — Deactivates the owner's monitor; it stops taking pings and alerting. (auth: guest)
+- `GET /api/endpoints/:id/events` — The latest pings received at this monitor's ingest. (auth: hook)
+- `GET /in/:id` — The ingest URL: this is where your cron or webhook proves it is alive. (auth: none)
+- `POST /in/:id` — The same ingest by POST, for whoever can only send webhooks. (auth: none)
+- `GET /api/status-feed` — Returns (minting it the first time) the public status URL of all your monitors. (auth: guest)
+- `DELETE /api/status-feed` — Rotates the feed token: the previous URL stops working immediately. (auth: guest)
+- `GET /s/:token.json` — The status dashboard as JSON, with no header at all — the token in the path is the credential. (auth: none)
+- `GET /s/:token.rss` — The same dashboard as RSS 2.0, for a feed reader, a chat bot or a status page. (auth: none)
+- `GET /api/templates` — Ingest snippets (curl, cron, n8n) and the exact JSON we POST on a miss. (auth: none)
+- `GET /api/billing` — Free allowance, x402 prices in force and the state of the account's trial. (auth: none)
+- `GET /api/me` — The session's account, its monitors and the state of the trial. (auth: session)
+- `POST /api/auth/start` — Sends the 6-digit code by e-mail to create the account or sign in to it. (auth: none)
+- `POST /api/auth/verify` — Exchanges the code for a session — and confirming the e-mail grants the trial on the spot. (auth: none)
+- `POST /api/auth/claim` — Moves the guest's monitors to the signed-in account. (auth: session)
+- `POST /api/auth/logout` — Invalidates the current session. (auth: session)
+- `POST /api/contact` — Talks to support: a human solves Turnstile, an agent pays $0.10 in x402. (auth: none)
+- `POST /api/visit` — Ping from the interface that increments the day's visits. Agents need not call it. (auth: none)
+- `GET /api/metrics` — Metrics of the last 7 days. With the operator token, includes payments. (auth: none)
+- `POST /api/credito` — Top up prepaid credit: pay once with x402 and get the token that debits on any API of the house. (auth: none)
+- `GET /api/credito` — Credit balance and statement — the latest movements, without returning the token. (auth: credito)
+
+## Quota
+
+- Free: dead-man endpoints — 10 per owner.
+- Free: minimum interval at no cost — 90s.
+- Free: ingest (`/in/:id`) — no charge per ping.
+- Free: webhook alert (`alert_url`) — no quota — it is a fetch of ours.
+- Free: e-mail alert (`alert_to`) — 1 registration.
+- Free: status dashboard by URL (JSON and RSS) — no quota.
+- Paid: endpoint beyond the allowance — **$0.10** USDC via x402.
+- Paid: interval below the free minimum — **$0.05** USDC via x402.
+- Paid: e-mail alert registration beyond the 1st — **$0.10** USDC via x402.
+- Paid: agent contact — **$0.10** USDC via x402.
+
+- Trial: sign up and CONFIRM the e-mail → **90 days** of full access, free. Loop: POST /api/auth/start {"email":"you@example.com"} → code arrives by e-mail → POST /api/auth/verify {"email":"...","code":"123456"} → 90 days without the usage paywall (extra endpoints and fast intervals; e-mail alerts beyond the 1st stay $0.10)
+
+Past the allowance → **402** with `accepts[]` (x402, USDC on Base). Pay and repeat the same call with `X-PAYMENT`.
+
+Numbers in force: https://hookpulse.net/api/billing
+
+## MCP
+
+- **Endpoint:** `POST https://hookpulse.net/mcp` — Streamable HTTP, JSON-RPC 2.0. Nothing to install.
+- Check it with `GET https://hookpulse.net/mcp` (server card) or `tools/list`.
+- Every tool is a call on this same API — the MCP has no backend of its own.
+- Credentials (`X-Guest-Token`, `Authorization`, `X-PAYMENT`) go in the header and are forwarded.
+
+## Skill
+
+- `.agents/skills/hookpulse/SKILL.md` — parity with this surface.
+- **Parity:** touched the UI/API → apidocs + skill + this file in the same PR.

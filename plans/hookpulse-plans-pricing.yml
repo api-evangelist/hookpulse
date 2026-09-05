@@ -1,0 +1,46 @@
+generated: '2026-09-05'
+method: probed
+source: https://hookpulse.net/api/billing
+note: >-
+  Pricing is machine-readable: /api/billing (200, anonymous) returns the free allowance, the x402
+  unit prices in force, and the trial state. There are no seat/monthly tiers — the model is a free
+  allowance plus per-action x402 micropayments (USDC on Base mainnet, chain_id 8453, facilitator
+  facilitator.payai.network), with a 90-day full-access trial granted on e-mail confirmation.
+plan_count: 3
+plans:
+  - name: Free
+    price: 0
+    currency: USD
+    billing_period: none
+    included:
+      - 10 dead-man endpoints per owner
+      - minimum interval 90s at no cost
+      - unlimited ingest pings (/in/:id)
+      - webhook alerts (alert_url) with no quota
+      - 1 e-mail alert registration
+      - public status dashboard (JSON and RSS) with no quota
+  - name: Pay-per-action (x402)
+    price: metered
+    currency: USDC
+    billing_period: per-request
+    rates:
+      - action: endpoint beyond the free 10
+        price_usd: 0.10
+      - action: interval below the free 90s minimum
+        price_usd: 0.05
+      - action: e-mail alert registration beyond the 1st
+        price_usd: 0.10
+      - action: agent contact (support without captcha)
+        price_usd: 0.10
+    mechanism: >-
+      HTTP 402 with accepts[]; retry the same call with X-PAYMENT, or prepay credit once via
+      POST /api/credito and debit with the cred_… bearer token.
+  - name: Trial
+    price: 0
+    currency: USD
+    billing_period: 90 days
+    included:
+      - full access without the usage paywall (extra endpoints and fast intervals)
+    excluded:
+      - e-mail alerts beyond the 1st stay $0.10
+    activation: sign up and confirm e-mail (POST /api/auth/start → POST /api/auth/verify)

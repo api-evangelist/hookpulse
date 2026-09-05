@@ -1,0 +1,59 @@
+generated: '2026-09-05'
+method: derived
+source: openapi/hookpulse-openapi.json (components.schemas + id/token reference fields)
+entities:
+  - name: Owner
+    description: >-
+      The holder of monitors — either an anonymous guest (hp_… token from POST /api/guest) or an
+      e-mail-verified account (sess_… session). POST /api/auth/claim moves a guest's monitors into
+      an account.
+    id_prefixes: [hp_, sess_]
+  - name: Monitor
+    schema: Monitor
+    description: A dead-man endpoint with a name, interval_sec, alert_to / alert_url and an ingest URL /in/:id.
+  - name: Event
+    schema: Ping
+    description: An ingest ping received at a monitor's /in/:id.
+  - name: StatusFeed
+    schema: Feed
+    description: >-
+      The owner's public status dashboard, minted by GET /api/status-feed and served tokenized at
+      /s/{token}.json and /s/{token}.rss; rows are LinhaStatus summarized by ResumoStatus.
+  - name: Account
+    schema: Conta
+    description: The e-mail account behind a session, carrying the 90-day trial state (Trial).
+  - name: Credit
+    description: Prepaid balance held by a bearer token (cred_…), topped up via x402 at POST /api/credito.
+    id_prefixes: [cred_]
+  - name: Billing
+    schema: Billing
+    description: The x402 price sheet and free allowance (Precos), read anonymously at /api/billing.
+relationships:
+  - from: Owner
+    to: Monitor
+    kind: has_many
+    via: X-Guest-Token / Authorization bearer on /api/endpoints
+  - from: Monitor
+    to: Event
+    kind: has_many
+    via: /api/endpoints/{id}/events
+  - from: Owner
+    to: StatusFeed
+    kind: has_one
+    via: /api/status-feed (rotated by DELETE)
+  - from: StatusFeed
+    to: Monitor
+    kind: has_many
+    via: LinhaStatus rows in /s/{token}.json
+  - from: Owner
+    to: Account
+    kind: belongs_to
+    via: /api/auth/claim (guest monitors move to the account)
+  - from: Account
+    to: Trial
+    kind: has_one
+    via: Conta.trial
+  - from: Monitor
+    to: Monitor.token
+    kind: has_one
+    via: read-only hook token (?token= / X-Hook-Token) for third-party dashboards

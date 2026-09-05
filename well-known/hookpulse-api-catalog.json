@@ -1,0 +1,76 @@
+{
+  "linkset": [
+    {
+      "anchor": "https://hookpulse.net/.well-known/api-catalog",
+      "item": [
+        {
+          "href": "https://hookpulse.net/api/"
+        },
+        {
+          "href": "https://hookpulse.net/mcp"
+        }
+      ],
+      "describedby": [
+        {
+          "href": "https://hookpulse.net/apis.json",
+          "type": "application/json",
+          "title": "APIs.json"
+        }
+      ]
+    },
+    {
+      "anchor": "https://hookpulse.net/api/",
+      "service-desc": [
+        {
+          "href": "https://hookpulse.net/openapi.json",
+          "type": "application/json",
+          "title": "OpenAPI 3"
+        }
+      ],
+      "service-doc": [
+        {
+          "href": "https://hookpulse.net/llms.txt",
+          "type": "text/plain",
+          "title": "Guia para agentes de IA"
+        },
+        {
+          "href": "https://hookpulse.net/llms-full.txt",
+          "type": "text/plain",
+          "title": "Referência completa da API"
+        },
+        {
+          "href": "https://hookpulse.net/okf/index.md",
+          "type": "text/markdown",
+          "title": "Bundle OKF"
+        }
+      ]
+    },
+    {
+      "anchor": "https://hookpulse.net/mcp",
+      "service-desc": [
+        {
+          "href": "https://hookpulse.net/mcp",
+          "type": "application/json",
+          "title": "MCP (streamable HTTP)"
+        }
+      ],
+      "service-doc": [
+        {
+          "href": "https://hookpulse.net/llms.txt",
+          "type": "text/plain",
+          "title": "Guia para agentes de IA"
+        },
+        {
+          "href": "https://hookpulse.net/llms-full.txt",
+          "type": "text/plain",
+          "title": "Referência completa da API"
+        },
+        {
+          "href": "https://hookpulse.net/okf/index.md",
+          "type": "text/markdown",
+          "title": "Bundle OKF"
+        }
+      ]
+    }
+  ]
+}

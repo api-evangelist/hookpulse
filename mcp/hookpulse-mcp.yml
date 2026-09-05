@@ -1,0 +1,67 @@
+generated: '2026-09-05'
+method: searched
+status: published
+source: https://hookpulse.net/mcp
+deployment:
+  mode: remote
+  endpoint: https://hookpulse.net/mcp
+  auth: none
+  verified: probed
+server:
+  name: HookPulse
+  version: 2d690e87
+  transport: streamable-http
+  protocol_version: '2024-11-05'
+  url: https://hookpulse.net/mcp
+  registry_auth: well-known/hookpulse-mcp-registry-auth.txt
+notes: >-
+  Live, anonymous hosted MCP server probed 2026-09-05: initialize and tools/list both answered 200
+  with 14 tools carrying real inputSchemas (saved verbatim to mcp/hookpulse-mcp-tools.json). A GET on
+  the endpoint returns a server card. Every tool is a thin wrapper over the public REST API on the
+  same host; credentials (X-Guest-Token, Authorization, X-PAYMENT) are forwarded from headers. Paid
+  tool actions surface x402: over-quota calls return a 402 payload with accepts[]. The provider also
+  publishes its MCP registry verification key at /.well-known/mcp-registry-auth (ed25519), and the
+  homepage carries Cursor/VS Code MCP install deeplinks.
+tools:
+  - name: api_index
+    description: Full index of the HookPulse API.
+    source_operation: openapi/hookpulse-openapi.json#api_index
+  - name: health
+    description: Liveness.
+    source_operation: openapi/hookpulse-openapi.json#health
+  - name: create_guest
+    description: Creates a guest token hp_… (the anonymous owner of monitors).
+    source_operation: openapi/hookpulse-openapi.json#create_guest
+  - name: list_endpoints
+    description: Lists the guest's/session's endpoints.
+    source_operation: openapi/hookpulse-openapi.json#list_endpoints
+  - name: create_endpoint
+    description: Creates a dead-man endpoint. May return 402 x402 when it leaves the free tier.
+    source_operation: openapi/hookpulse-openapi.json#create_endpoint
+  - name: get_endpoint
+    description: Status of one endpoint (accepts the monitor's own token).
+    source_operation: openapi/hookpulse-openapi.json#get_endpoint
+  - name: delete_endpoint
+    description: Removes the owner's endpoint.
+    source_operation: openapi/hookpulse-openapi.json#delete_endpoint
+  - name: list_events
+    description: Latest ingest pings.
+    source_operation: openapi/hookpulse-openapi.json#list_events
+  - name: ping_ingest
+    description: 'Simulates the cron: GET on /in/:id.'
+    source_operation: openapi/hookpulse-openapi.json#ping_ingest
+  - name: billing
+    description: Free plan, x402 prices and the trial offer.
+    source_operation: openapi/hookpulse-openapi.json#billing
+  - name: status_feed_url
+    description: Public URL (JSON and RSS) with the status of all the owner's endpoints.
+    source_operation: openapi/hookpulse-openapi.json#status_feed_url
+  - name: status_feed_rotate
+    description: Rotates the status feed token; the previous URL stops working.
+    source_operation: openapi/hookpulse-openapi.json#status_feed_rotate
+  - name: list_templates
+    description: Ingest snippets and the JSON HookPulse POSTs on a miss.
+    source_operation: openapi/hookpulse-openapi.json#list_templates
+  - name: contact
+    description: Support. Agent without captcha pays $0.10 x402; then 429 + Retry-After.
+    source_operation: openapi/hookpulse-openapi.json#contact

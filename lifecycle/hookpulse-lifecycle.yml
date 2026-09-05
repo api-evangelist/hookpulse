@@ -1,0 +1,24 @@
+generated: '2026-09-05'
+method: searched
+source: https://hookpulse.net/api/ + https://hookpulse.net/openapi.json
+versioning:
+  scheme: build-hash
+  current: 2d690e87
+  docs: https://hookpulse.net/api/health
+  note: >-
+    No semver and no versioned paths — the API is a single unversioned surface whose info.version is
+    the deployed commit hash, exposed live at /api/health. The provider documents a "parity"
+    convention instead: any UI/API change updates apidocs, skill, MCP and llms.txt in the same PR.
+deprecation:
+  policy_url: null
+  sunset_header: false
+  note: No deprecation policy published and no deprecated operations in the OpenAPI.
+sla:
+  url: null
+  note: No SLA published.
+status_page: null
+status_note: >-
+  No provider-level status page. Status feeds exist per customer — GET /api/status-feed mints a
+  public per-owner dashboard served as JSON and RSS at /s/{token}.json|.rss — but they report the
+  customer's monitors, not HookPulse's own availability. Liveness is at /api/health.
+deprecated_operations: []

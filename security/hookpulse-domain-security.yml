@@ -1,0 +1,16 @@
+generated: '2026-09-05'
+method: probed
+source: live DNS/TLS/HTTP probes of apis.yml + OpenAPI hosts
+hosts:
+- host: hookpulse.net
+  https: true
+  tls_version: TLSv1.3
+  cert_expires: Nov  8 23:28:14 2026 GMT
+  hsts: false
+domains:
+- domain: hookpulse.net
+  dnssec: false
+  caa: []
+  spf: true
+  dmarc: true
+  dmarc_policy: none

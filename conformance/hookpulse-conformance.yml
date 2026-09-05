@@ -1,0 +1,64 @@
+generated: '2026-09-05'
+method: searched
+source: https://hookpulse.net/ (probed 2026-09-05; every evidence URL fetched with the status shown)
+standards:
+  - id: openapi-3.1
+    conforms: true
+    evidence: https://hookpulse.net/openapi.json (200) — openapi 3.1.0, 25 paths / 31 operations
+  - id: rfc9727-api-catalog
+    conforms: true
+    evidence: >-
+      https://hookpulse.net/.well-known/api-catalog (200) — RFC 9727 linkset with service-desc
+      (OpenAPI), service-doc (llms.txt) and describedby (APIs.json) relations
+  - id: apis-json
+    conforms: true
+    evidence: >-
+      https://hookpulse.net/apis.json (200) — APIs.json specificationVersion 0.19, also served at
+      /.well-known/apis.json
+  - id: rfc9116-security-txt
+    conforms: true
+    evidence: >-
+      https://hookpulse.net/.well-known/security.txt (200) — Contact, Expires, Preferred-Languages,
+      Canonical
+  - id: mcp
+    conforms: true
+    evidence: >-
+      https://hookpulse.net/mcp — Streamable HTTP MCP server, protocolVersion 2024-11-05; initialize
+      and tools/list probed anonymously (200, 14 tools); registry key at
+      /.well-known/mcp-registry-auth
+  - id: x402
+    conforms: true
+    evidence: >-
+      Paid operations return HTTP 402 with accepts[] and are retried with X-PAYMENT (documented in
+      llms.txt and the OpenAPI 402 responses); https://hookpulse.net/api/billing (200) declares
+      provider x402, USDC on Base mainnet (chain_id 8453), facilitator
+      https://facilitator.payai.network
+  - id: llms-txt
+    conforms: true
+    evidence: https://hookpulse.net/llms.txt (200) and /llms-full.txt (200)
+  - id: okf-0.1
+    conforms: true
+    evidence: >-
+      https://hookpulse.net/okf/index.md (200) — Open Knowledge Format v0.1 bundle (frontmatter
+      okf_version "0.1") with sobre/api/faq pages
+  - id: rss-2.0
+    conforms: true
+    evidence: per-owner public status feeds served as RSS 2.0 at /s/{token}.rss (documented in the API index)
+  - id: oauth2
+    conforms: false
+    evidence: no oauth2 securityScheme — bearer guest/session tokens and e-mail OTP only
+  - id: oidc
+    conforms: false
+    evidence: /.well-known/openid-configuration returns 404
+  - id: rfc9457-problem-details
+    conforms: false
+    evidence: 'errors are a proprietary envelope { error, detail? }, not application/problem+json'
+domain_standard:
+  - id: x402
+    market: agent-native API monetization
+    declared_in_contract: true
+    evidence: >-
+      The OpenAPI declares 402 responses on create_endpoint, patch_api_endpoints_by_id, contact and
+      post_api_credito, and /api/billing is a machine-readable x402 price sheet (pay_to address,
+      asset_address for USDC on Base, facilitator URL). An x402-speaking agent integrates with no
+      bespoke payment connector.

@@ -1,0 +1,73 @@
+{
+  "name": "HookPulse",
+  "description": "Get an ingest URL. Your cron, Stripe or n8n pings it on schedule. If pings stop, we record a miss. Not website uptime monitoring.",
+  "image": "https://hookpulse.net/icon.svg",
+  "url": "https://hookpulse.net/apis.json",
+  "tags": [
+    "Ingest URL for cron and webhooks",
+    "Miss detection when pings stop",
+    "Email alert on silence",
+    "Public status page per owner, as JSON and RSS",
+    "Agent-first HTTP API with x402 billing",
+    "MCP server for agents"
+  ],
+  "created": "2026-09-05",
+  "modified": "2026-09-05",
+  "specificationVersion": "0.19",
+  "apis": [
+    {
+      "name": "HookPulse",
+      "description": "Get an ingest URL. Your cron, Stripe or n8n pings it on schedule. If pings stop, we record a miss. Not website uptime monitoring.",
+      "image": "https://hookpulse.net/icon.svg",
+      "humanURL": "https://hookpulse.net/",
+      "baseURL": "https://hookpulse.net/api/",
+      "tags": [
+        "Ingest URL for cron and webhooks",
+        "Miss detection when pings stop",
+        "Email alert on silence",
+        "Public status page per owner, as JSON and RSS",
+        "Agent-first HTTP API with x402 billing",
+        "MCP server for agents"
+      ],
+      "properties": [
+        {
+          "type": "OpenAPI",
+          "url": "https://hookpulse.net/openapi.json"
+        },
+        {
+          "type": "Documentation",
+          "url": "https://hookpulse.net/llms-full.txt"
+        },
+        {
+          "type": "x-llms-txt",
+          "url": "https://hookpulse.net/llms.txt"
+        },
+        {
+          "type": "x-mcp",
+          "url": "https://hookpulse.net/mcp"
+        },
+        {
+          "type": "x-api-catalog",
+          "url": "https://hookpulse.net/.well-known/api-catalog"
+        },
+        {
+          "type": "x-okf",
+          "url": "https://hookpulse.net/okf/index.md"
+        }
+      ],
+      "contact": [
+        {
+          "FN": "HookPulse",
+          "email": "contato@hookpulse.net"
+        }
+      ]
+    }
+  ],
+  "include": [],
+  "maintainers": [
+    {
+      "FN": "HookPulse",
+      "email": "contato@hookpulse.net"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+generated: '2026-09-05'
+method: searched
+source: https://hookpulse.net/.well-known/
+note: >-
+  hookpulse.net serves a genuine machine-discovery surface: RFC 9116 security.txt, an RFC 9727
+  api-catalog linkset (pointing at the API index, the MCP server, and the APIs.json), an APIs.json
+  0.19 at both the domain root and /.well-known/, and the official MCP registry verification key at
+  /.well-known/mcp-registry-auth. Negative control passed (a nonexistent well-known path returns a
+  real 404), so the 200s are real documents, not a catch-all.
+path_echo_control: passed
+hosts:
+  - host: https://hookpulse.net
+    documents:
+      - path: /.well-known/security.txt
+        status: 200
+        file: hookpulse-security.txt
+      - path: /.well-known/api-catalog
+        status: 200
+        file: hookpulse-api-catalog.json
+      - path: /.well-known/apis.json
+        status: 200
+        file: hookpulse-apis-json.json
+      - path: /apis.json
+        status: 200
+        file: hookpulse-apis-json.json
+      - path: /.well-known/mcp-registry-auth
+        status: 200
+        file: hookpulse-mcp-registry-auth.txt
+      - path: /apis.yml
+        status: 404
+      - path: /.well-known/openid-configuration
+        status: 404
+      - path: /.well-known/oauth-authorization-server
+        status: 404
+      - path: /.well-known/oauth-protected-resource
+        status: 404
+      - path: /.well-known/ai-plugin.json
+        status: 404
+      - path: /.well-known/ucp.json
+        status: 404
+      - path: /.well-known/acp.json
+        status: 404
+      - path: /.well-known/aauth-resource.json
+        status: 404
+      - path: /.well-known/agent-card.json
+        status: 404
+      - path: /.well-known/agent.json
+        status: 404

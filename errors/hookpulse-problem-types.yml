@@ -1,0 +1,68 @@
+generated: '2026-09-05'
+method: derived
+source: openapi/hookpulse-openapi.json + https://hookpulse.net/api/ (conventions block)
+format: proprietary
+envelope: '{ "error": string, "detail"?: string } — documented at https://hookpulse.net/api/ ("errors are { error, detail? }")'
+problems:
+  - status: 400
+    title: Bad request
+    detail: Invalid body or parameters (e.g. bad interval_sec, malformed e-mail, bad alert_url).
+    source_operations:
+      - openapi/hookpulse-openapi.json#create_endpoint
+      - openapi/hookpulse-openapi.json#patch_api_endpoints_by_id
+      - openapi/hookpulse-openapi.json#post_api_auth_start
+      - openapi/hookpulse-openapi.json#post_api_auth_verify
+      - openapi/hookpulse-openapi.json#post_api_auth_claim
+      - openapi/hookpulse-openapi.json#contact
+      - openapi/hookpulse-openapi.json#post_api_credito
+  - status: 401
+    title: Unauthorized
+    detail: >-
+      Missing or invalid credential. Guest token hp_… (X-Guest-Token or Authorization Bearer),
+      session sess_…, monitor token (?token= / X-Hook-Token) or credit token cred_… depending on the
+      route.
+    source_operations:
+      - openapi/hookpulse-openapi.json#list_endpoints
+      - openapi/hookpulse-openapi.json#create_endpoint
+      - openapi/hookpulse-openapi.json#get_endpoint
+      - openapi/hookpulse-openapi.json#patch_api_endpoints_by_id
+      - openapi/hookpulse-openapi.json#delete_endpoint
+      - openapi/hookpulse-openapi.json#list_events
+      - openapi/hookpulse-openapi.json#status_feed_url
+      - openapi/hookpulse-openapi.json#status_feed_rotate
+      - openapi/hookpulse-openapi.json#get_api_me
+      - openapi/hookpulse-openapi.json#get_api_credito
+  - status: 402
+    title: Payment required (x402)
+    detail: >-
+      The action left the free allowance. The 402 body carries accepts[] (x402, USDC on Base);
+      pay and repeat the same call with the X-PAYMENT header, or draw on prepaid credit
+      (Authorization Bearer cred_…). Prices in force at https://hookpulse.net/api/billing.
+    source_operations:
+      - openapi/hookpulse-openapi.json#create_endpoint
+      - openapi/hookpulse-openapi.json#patch_api_endpoints_by_id
+      - openapi/hookpulse-openapi.json#contact
+      - openapi/hookpulse-openapi.json#post_api_credito
+  - status: 404
+    title: Not found
+    detail: Unknown monitor id, ingest id, status-feed token, or a file outside the OKF/well-known bundle.
+    source_operations:
+      - openapi/hookpulse-openapi.json#get_okf_by_arquivo
+      - openapi/hookpulse-openapi.json#get_well_known_by_arquivo
+      - openapi/hookpulse-openapi.json#get_endpoint
+      - openapi/hookpulse-openapi.json#patch_api_endpoints_by_id
+      - openapi/hookpulse-openapi.json#delete_endpoint
+      - openapi/hookpulse-openapi.json#list_events
+      - openapi/hookpulse-openapi.json#ping_ingest
+      - openapi/hookpulse-openapi.json#post_in_by_id
+      - openapi/hookpulse-openapi.json#get_s_by_token_json
+      - openapi/hookpulse-openapi.json#get_s_by_token_rss
+  - status: 429
+    title: Too many requests
+    detail: >-
+      Throttled. Documented on the OTP flow (auth/start, auth/verify) and on contact — after the
+      first support message an agent gets 429 with a Retry-After header.
+    source_operations:
+      - openapi/hookpulse-openapi.json#post_api_auth_start
+      - openapi/hookpulse-openapi.json#post_api_auth_verify
+      - openapi/hookpulse-openapi.json#contact
