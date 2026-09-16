@@ -12,6 +12,19 @@ tags:
 - Monitoring
 - Observability
 - Cron
+- Webhook
+- Heartbeat
+- Dead-mans-switch
+- Alerting
+- Status Pages
+- agent-native
+- MCP
+- x402
+- Micropayments
+tags_raw:
+- Monitoring
+- Observability
+- Cron
 - Webhooks
 - Heartbeat
 - Dead-mans-switch
@@ -22,33 +35,376 @@ tags:
 - x402
 - Micropayments
 apis:
-- name: HookPulse API
-  description: Public REST/HTTP API for heartbeat monitors, ingest URLs, miss detection, alerts, status feeds, auth,
-    billing, credit, and metrics. OpenAPI 3.1.0 with ~31 operations. Also exposes a hosted MCP server with 14 tools
-    and agent-readable llms.txt/OKF docs.
-  image: https://hookpulse.net/icon.svg
+- aid: hookpulse:hookpulse-apis-json-api
+  name: HookPulse Apis.json API
+  description: The Apis.json API from HookPulse — 1 operation(s) for apis.json.
   humanURL: https://hookpulse.net/api/
   baseURL: https://hookpulse.net
   tags:
-  - Monitoring
-  - Observability
-  - Cron
-  - Webhooks
-  - Heartbeat
-  - Dead-mans-switch
-  - Alerting
-  - Status pages
-  - Agent-native
-  - MCP
-  - x402
-  - Micropayments
+  - Apis.json
   properties:
   - type: OpenAPI
-    url: https://hookpulse.net/openapi.json
+    url: openapi/hookpulse-apis-json-api-openapi.yml
+  - type: ToolCrosswalk
+    url: mcp/hookpulse-tool-crosswalk.yml
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms.txt
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms-full.txt
+  - type: Documentation
+    url: https://hookpulse.net/okf/index.md
+  - type: Documentation
+    url: https://hookpulse.net/.well-known/api-catalog
+- aid: hookpulse:hookpulse-auth-api
+  name: HookPulse Auth API
+  description: The Auth API from HookPulse — 4 operation(s) for auth.
+  humanURL: https://hookpulse.net/api/
+  baseURL: https://hookpulse.net
+  tags:
+  - Auth
+  properties:
   - type: OpenAPI
-    url: openapi/hookpulse-openapi.json
-  - type: MCPServer
-    url: https://hookpulse.net/mcp
+    url: openapi/hookpulse-auth-api-openapi.yml
+  - type: ToolCrosswalk
+    url: mcp/hookpulse-tool-crosswalk.yml
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms.txt
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms-full.txt
+  - type: Documentation
+    url: https://hookpulse.net/okf/index.md
+  - type: Documentation
+    url: https://hookpulse.net/.well-known/api-catalog
+- aid: hookpulse:hookpulse-billing-api
+  name: HookPulse Billing API
+  description: The Billing API from HookPulse — 1 operation(s) for billing.
+  humanURL: https://hookpulse.net/api/
+  baseURL: https://hookpulse.net
+  tags:
+  - Billing
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-billing-api-openapi.yml
+  - type: ToolCrosswalk
+    url: mcp/hookpulse-tool-crosswalk.yml
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms.txt
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms-full.txt
+  - type: Documentation
+    url: https://hookpulse.net/okf/index.md
+  - type: Documentation
+    url: https://hookpulse.net/.well-known/api-catalog
+- aid: hookpulse:hookpulse-contact-api
+  name: HookPulse Contact API
+  description: The Contact API from HookPulse — 1 operation(s) for contact.
+  humanURL: https://hookpulse.net/api/
+  baseURL: https://hookpulse.net
+  tags:
+  - Contact
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-contact-api-openapi.yml
+  - type: ToolCrosswalk
+    url: mcp/hookpulse-tool-crosswalk.yml
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms.txt
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms-full.txt
+  - type: Documentation
+    url: https://hookpulse.net/okf/index.md
+  - type: Documentation
+    url: https://hookpulse.net/.well-known/api-catalog
+- aid: hookpulse:hookpulse-credito-api
+  name: HookPulse Credito API
+  description: The Credito API from HookPulse — 1 operation(s) for credito.
+  humanURL: https://hookpulse.net/api/
+  baseURL: https://hookpulse.net
+  tags:
+  - Credito
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-credito-api-openapi.yml
+  - type: ToolCrosswalk
+    url: mcp/hookpulse-tool-crosswalk.yml
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms.txt
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms-full.txt
+  - type: Documentation
+    url: https://hookpulse.net/okf/index.md
+  - type: Documentation
+    url: https://hookpulse.net/.well-known/api-catalog
+- aid: hookpulse:hookpulse-endpoints-api
+  name: HookPulse Endpoints API
+  description: The Endpoints API from HookPulse — 3 operation(s) for endpoints.
+  humanURL: https://hookpulse.net/api/
+  baseURL: https://hookpulse.net
+  tags:
+  - Endpoints
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-endpoints-api-openapi.yml
+  - type: ToolCrosswalk
+    url: mcp/hookpulse-tool-crosswalk.yml
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms.txt
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms-full.txt
+  - type: Documentation
+    url: https://hookpulse.net/okf/index.md
+  - type: Documentation
+    url: https://hookpulse.net/.well-known/api-catalog
+- aid: hookpulse:hookpulse-guest-api
+  name: HookPulse Guest API
+  description: The Guest API from HookPulse — 1 operation(s) for guest.
+  humanURL: https://hookpulse.net/api/
+  baseURL: https://hookpulse.net
+  tags:
+  - Guest
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-guest-api-openapi.yml
+  - type: ToolCrosswalk
+    url: mcp/hookpulse-tool-crosswalk.yml
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms.txt
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms-full.txt
+  - type: Documentation
+    url: https://hookpulse.net/okf/index.md
+  - type: Documentation
+    url: https://hookpulse.net/.well-known/api-catalog
+- aid: hookpulse:hookpulse-health-api
+  name: HookPulse Health API
+  description: The Health API from HookPulse — 1 operation(s) for health.
+  humanURL: https://hookpulse.net/api/
+  baseURL: https://hookpulse.net
+  tags:
+  - Health
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-health-api-openapi.yml
+  - type: ToolCrosswalk
+    url: mcp/hookpulse-tool-crosswalk.yml
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms.txt
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms-full.txt
+  - type: Documentation
+    url: https://hookpulse.net/okf/index.md
+  - type: Documentation
+    url: https://hookpulse.net/.well-known/api-catalog
+- aid: hookpulse:hookpulse-hookpulse-api
+  name: HookPulse Hook Pulse API
+  description: The HookPulse API from HookPulse — 1 operation(s) for hookpulse.
+  humanURL: https://hookpulse.net/api/
+  baseURL: https://hookpulse.net
+  tags:
+  - HookPulse
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-hookpulse-api-openapi.yml
+  - type: ToolCrosswalk
+    url: mcp/hookpulse-tool-crosswalk.yml
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms.txt
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms-full.txt
+  - type: Documentation
+    url: https://hookpulse.net/okf/index.md
+  - type: Documentation
+    url: https://hookpulse.net/.well-known/api-catalog
+- aid: hookpulse:hookpulse-in-api
+  name: HookPulse In API
+  description: The In API from HookPulse — 1 operation(s) for in.
+  humanURL: https://hookpulse.net/api/
+  baseURL: https://hookpulse.net
+  tags:
+  - In
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-in-api-openapi.yml
+  - type: ToolCrosswalk
+    url: mcp/hookpulse-tool-crosswalk.yml
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms.txt
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms-full.txt
+  - type: Documentation
+    url: https://hookpulse.net/okf/index.md
+  - type: Documentation
+    url: https://hookpulse.net/.well-known/api-catalog
+- aid: hookpulse:hookpulse-mcp-api
+  name: HookPulse MCP API
+  description: The Mcp API from HookPulse — 1 operation(s) for mcp.
+  humanURL: https://hookpulse.net/api/
+  baseURL: https://hookpulse.net
+  tags:
+  - Mcp
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-mcp-api-openapi.yml
+  - type: ToolCrosswalk
+    url: mcp/hookpulse-tool-crosswalk.yml
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms.txt
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms-full.txt
+  - type: Documentation
+    url: https://hookpulse.net/okf/index.md
+  - type: Documentation
+    url: https://hookpulse.net/.well-known/api-catalog
+- aid: hookpulse:hookpulse-me-api
+  name: HookPulse Me API
+  description: The Me API from HookPulse — 1 operation(s) for me.
+  humanURL: https://hookpulse.net/api/
+  baseURL: https://hookpulse.net
+  tags:
+  - Me
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-me-api-openapi.yml
+  - type: ToolCrosswalk
+    url: mcp/hookpulse-tool-crosswalk.yml
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms.txt
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms-full.txt
+  - type: Documentation
+    url: https://hookpulse.net/okf/index.md
+  - type: Documentation
+    url: https://hookpulse.net/.well-known/api-catalog
+- aid: hookpulse:hookpulse-metrics-api
+  name: HookPulse Metrics API
+  description: The Metrics API from HookPulse — 1 operation(s) for metrics.
+  humanURL: https://hookpulse.net/api/
+  baseURL: https://hookpulse.net
+  tags:
+  - Metrics
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-metrics-api-openapi.yml
+  - type: ToolCrosswalk
+    url: mcp/hookpulse-tool-crosswalk.yml
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms.txt
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms-full.txt
+  - type: Documentation
+    url: https://hookpulse.net/okf/index.md
+  - type: Documentation
+    url: https://hookpulse.net/.well-known/api-catalog
+- aid: hookpulse:hookpulse-okf-api
+  name: HookPulse Okf API
+  description: The Okf API from HookPulse — 1 operation(s) for okf.
+  humanURL: https://hookpulse.net/api/
+  baseURL: https://hookpulse.net
+  tags:
+  - Okf
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-okf-api-openapi.yml
+  - type: ToolCrosswalk
+    url: mcp/hookpulse-tool-crosswalk.yml
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms.txt
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms-full.txt
+  - type: Documentation
+    url: https://hookpulse.net/okf/index.md
+  - type: Documentation
+    url: https://hookpulse.net/.well-known/api-catalog
+- aid: hookpulse:hookpulse-s-api
+  name: HookPulse S API
+  description: The S API from HookPulse — 2 operation(s) for s.
+  humanURL: https://hookpulse.net/api/
+  baseURL: https://hookpulse.net
+  tags:
+  - S
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-s-api-openapi.yml
+  - type: ToolCrosswalk
+    url: mcp/hookpulse-tool-crosswalk.yml
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms.txt
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms-full.txt
+  - type: Documentation
+    url: https://hookpulse.net/okf/index.md
+  - type: Documentation
+    url: https://hookpulse.net/.well-known/api-catalog
+- aid: hookpulse:hookpulse-status-feed-api
+  name: HookPulse Status Feed API
+  description: The Status Feed API from HookPulse — 1 operation(s) for status feed.
+  humanURL: https://hookpulse.net/api/
+  baseURL: https://hookpulse.net
+  tags:
+  - Status Feed
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-status-feed-api-openapi.yml
+  - type: ToolCrosswalk
+    url: mcp/hookpulse-tool-crosswalk.yml
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms.txt
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms-full.txt
+  - type: Documentation
+    url: https://hookpulse.net/okf/index.md
+  - type: Documentation
+    url: https://hookpulse.net/.well-known/api-catalog
+- aid: hookpulse:hookpulse-templates-api
+  name: HookPulse Templates API
+  description: The Templates API from HookPulse — 1 operation(s) for templates.
+  humanURL: https://hookpulse.net/api/
+  baseURL: https://hookpulse.net
+  tags:
+  - Templates
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-templates-api-openapi.yml
+  - type: ToolCrosswalk
+    url: mcp/hookpulse-tool-crosswalk.yml
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms.txt
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms-full.txt
+  - type: Documentation
+    url: https://hookpulse.net/okf/index.md
+  - type: Documentation
+    url: https://hookpulse.net/.well-known/api-catalog
+- aid: hookpulse:hookpulse-visit-api
+  name: HookPulse Visit API
+  description: The Visit API from HookPulse — 1 operation(s) for visit.
+  humanURL: https://hookpulse.net/api/
+  baseURL: https://hookpulse.net
+  tags:
+  - Visit
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-visit-api-openapi.yml
+  - type: ToolCrosswalk
+    url: mcp/hookpulse-tool-crosswalk.yml
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms.txt
+  - type: LLMsTxt
+    url: https://hookpulse.net/llms-full.txt
+  - type: Documentation
+    url: https://hookpulse.net/okf/index.md
+  - type: Documentation
+    url: https://hookpulse.net/.well-known/api-catalog
+- aid: hookpulse:hookpulse-well-known-api
+  name: HookPulse .well Known API
+  description: The .well Known API from HookPulse — 1 operation(s) for .well known.
+  humanURL: https://hookpulse.net/api/
+  baseURL: https://hookpulse.net
+  tags:
+  - .well Known
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-well-known-api-openapi.yml
   - type: ToolCrosswalk
     url: mcp/hookpulse-tool-crosswalk.yml
   - type: LLMsTxt
@@ -74,6 +430,8 @@ x-enrichment:
   artifacts_added: 28
   pass: local-v3
 common:
+- type: MCPServer
+  url: https://hookpulse.net/mcp
 - type: Website
   url: https://hookpulse.net
 - type: VulnerabilityDisclosure
