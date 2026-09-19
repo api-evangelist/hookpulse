@@ -41,6 +41,8 @@ apis:
   humanURL: https://hookpulse.net/api/
   baseURL: https://hookpulse.net
   tags:
+  - APIs.json
+  tags_raw:
   - Apis.json
   properties:
   - type: OpenAPI
@@ -61,6 +63,8 @@ apis:
   humanURL: https://hookpulse.net/api/
   baseURL: https://hookpulse.net
   tags:
+  - Authentication
+  tags_raw:
   - Auth
   properties:
   - type: OpenAPI
@@ -140,7 +144,8 @@ apis:
   description: The Endpoints API from HookPulse — 3 operation(s) for endpoints.
   humanURL: https://hookpulse.net/api/
   baseURL: https://hookpulse.net
-  tags:
+  tags: []
+  tags_raw:
   - Endpoints
   properties:
   - type: OpenAPI
@@ -241,6 +246,8 @@ apis:
   humanURL: https://hookpulse.net/api/
   baseURL: https://hookpulse.net
   tags:
+  - MCP
+  tags_raw:
   - Mcp
   properties:
   - type: OpenAPI
