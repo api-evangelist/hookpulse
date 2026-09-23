@@ -1,0 +1,81 @@
+openapi: 3.2.0
+info:
+  title: HookPulse Metrics API
+  version: 2d690e87
+  description: 'Dead-man switch for webhooks/cron. Index: GET /api/.'
+servers:
+- url: https://hookpulse.net
+tags:
+- name: Metrics
+paths:
+  /api/metrics:
+    get:
+      operationId: get_api_metrics
+      summary: Metrics of the last 7 days. With the operator token, includes payments
+      description: 'Without credentials it returns visits, usage and accounts. With `METRICS_TOKEN` as Bearer it adds `payments` — and only on Base mainnet, because staging numbers on a finance panel mislead.
+
+        Returns: { app, today, today_visits, today_contacts?, days, usage, accounts, financeiro?, payments? }'
+      security: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+        description: '`Bearer <METRICS_TOKEN>` to include the finance block.'
+      responses:
+        '200':
+          description: '{ app, today, today_visits, today_contacts?, days, usage, accounts, financeiro?, payments? }'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Metricas'
+      tags:
+      - Metrics
+components:
+  schemas:
+    Metricas:
+      type: object
+      properties:
+        app:
+          type: string
+          description: Product name.
+        today:
+          type: string
+          description: Reference day (UTC, YYYY-MM-DD).
+        today_visits:
+          type: integer
+          description: Visits counted today.
+        today_contacts:
+          type: integer
+          description: 'Contact messages received today. Only with `METRICS_TOKEN`: contact does not leave without a token.'
+        days:
+          type: array
+          items:
+            type: object
+          description: One record per day of the window, with the counts of each metric.
+        usage:
+          type: object
+          description: Usage per product resource — here, monitors.
+        accounts:
+          type: object
+          description: Total guests and accounts.
+        financeiro:
+          type: object
+          description: 'Aggregate of the day: `hoje_usd`, `hoje_count`, `rede`. Only with `METRICS_TOKEN`: money does not leave without a token; the full series is `payments`.'
+        payments:
+          type: object
+          description: Finance summary; only with METRICS_TOKEN.
+      required:
+      - app
+      - today
+      - today_visits
+      - days
+      - usage
+      - accounts
+      description: 7-day panel. `payments` only shows with the operator token and only on Base mainnet.
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A `sess_…` session also works.'

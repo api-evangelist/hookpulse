@@ -1,0 +1,87 @@
+openapi: 3.2.0
+info:
+  title: Hook Pulse API
+  version: 2d690e87
+  description: 'Dead-man switch for webhooks/cron. Index: GET /api/.'
+servers:
+- url: https://hookpulse.net
+tags:
+- name: HookPulse
+paths:
+  /api/:
+    get:
+      operationId: api_index
+      summary: 'Self-describing index: the whole API surface, with quota and quickstart'
+      description: 'Returns: { name, description, build, base_url, docs, conventions, auth, endpoints, quota, mcp, mcp_tools, quickstart }'
+      security: []
+      responses:
+        '200':
+          description: '{ name, description, build, base_url, docs, conventions, auth, endpoints, quota, mcp, mcp_tools, quickstart }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    description: Product name.
+                  description:
+                    type: string
+                    description: What the product does, in one sentence.
+                  build:
+                    type: string
+                    description: Deployed commit.
+                  base_url:
+                    type: string
+                    description: Origin this API is serving from.
+                  docs:
+                    type: object
+                    description: Links to llms.txt, llms-full.txt, openapi.json, MCP and the UI.
+                  conventions:
+                    type: object
+                    description: Error format, CORS, x402 and the UI↔API parity rule.
+                  auth:
+                    type: object
+                    description: Each authentication mode and how to obtain it.
+                  endpoints:
+                    type: array
+                    items:
+                      type: object
+                    description: Every endpoint with method, path, auth, absolute URL and what it returns.
+                  quota:
+                    type: object
+                    description: What is free, what costs and how to pay — before you spend a call.
+                  mcp:
+                    type: object
+                    description: Address and transport of the MCP server.
+                  mcp_tools:
+                    type: array
+                    items:
+                      type: string
+                    description: Name of each MCP tool.
+                  quickstart:
+                    type: array
+                    items:
+                      type: string
+                    description: The calls that take you from zero to the first monitor.
+                required:
+                - name
+                - description
+                - build
+                - base_url
+                - docs
+                - conventions
+                - auth
+                - endpoints
+                - quota
+                - mcp
+                - mcp_tools
+                - quickstart
+      tags:
+      - HookPulse
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A `sess_…` session also works.'

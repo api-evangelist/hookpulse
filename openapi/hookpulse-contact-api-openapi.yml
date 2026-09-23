@@ -1,0 +1,77 @@
+openapi: 3.2.0
+info:
+  title: HookPulse Contact API
+  version: 2d690e87
+  description: 'Dead-man switch for webhooks/cron. Index: GET /api/.'
+servers:
+- url: https://hookpulse.net
+tags:
+- name: Contact
+paths:
+  /api/contact:
+    post:
+      operationId: contact
+      summary: 'Talks to support: a human solves Turnstile, an agent pays $0.10 in x402'
+      description: 'The first agent message is free; after that the backoff is 60s doubling up to a 1-hour cap, announced in `Retry-After`.
+
+        Returns: { ok, path }'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: What to call the person writing.
+                email:
+                  type: string
+                  description: Where to reply.
+                message:
+                  type: string
+                  description: What you want to say.
+                form_ts:
+                  type: integer
+                  description: When the form was opened; it is the anti-robot of the human path.
+              required:
+              - name
+              - email
+              - message
+            example:
+              name: …
+              email: a@example.com
+              message: …
+              form_ts: 0
+      responses:
+        '200':
+          description: '{ ok, path }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    description: Always `true` when the message was accepted.
+                  path:
+                    type: string
+                    description: 'Which path it came through: human with captcha or paid agent.'
+                required:
+                - ok
+                - path
+        '400':
+          description: Required field missing.
+        '402':
+          description: 'Quota exceeded. The response carries `accepts[]` (x402, USDC on Base): pay and repeat the same call with `X-PAYMENT`.'
+        '429':
+          description: 'Agent backoff: wait for `Retry-After`.'
+      tags:
+      - Contact
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A `sess_…` session also works.'

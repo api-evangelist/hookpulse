@@ -1,0 +1,169 @@
+openapi: 3.2.0
+info:
+  title: HookPulse Billing API
+  version: 2d690e87
+  description: 'Dead-man switch for webhooks/cron. Index: GET /api/.'
+servers:
+- url: https://hookpulse.net
+tags:
+- name: Billing
+paths:
+  /api/billing:
+    get:
+      operationId: billing
+      summary: Free allowance, x402 prices in force and the state of the account's trial
+      description: 'Check before creating the second monitor or lowering the interval: it is the number IN FORCE, not the documentation''s.
+
+        Returns: { provider, mode, network, chain_id, pay_to, homolog, dev, dev_gate, facilitator, asset, asset_address, faucet, wallets, product, free_max_endpoints, free_min_interval_sec, free_email_alerts, prices{extra_endpoint_usd,fast_interval_usd,email_alert_usd,contact_agent_usd}, usage, trial{days,active,days_left?,ends_at,granted?} }'
+      security: []
+      responses:
+        '200':
+          description: '{ provider, mode, network, chain_id, pay_to, homolog, dev, dev_gate, facilitator, asset, asset_address, faucet, wallets, product, free_max_endpoints, free_min_interval_sec, free_email_alerts, prices{extra_endpoint_usd,fast_interval_usd,email_alert_usd,contact_agent_usd}, usage, trial{days,active,days_left?,ends_at,granted?} }'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Billing'
+      tags:
+      - Billing
+components:
+  schemas:
+    Precos:
+      type: object
+      properties:
+        extra_endpoint_usd:
+          type: number
+          description: Monitor beyond the allowance.
+        fast_interval_usd:
+          type: number
+          description: Interval below the free minimum.
+        email_alert_usd:
+          type: number
+          description: E-mail alert registration beyond the first.
+        contact_agent_usd:
+          type: number
+          description: Agent contact.
+      required:
+      - extra_endpoint_usd
+      - fast_interval_usd
+      - email_alert_usd
+      - contact_agent_usd
+      description: Prices in force, in dollars. Read them here, not from the documentation.
+    Billing:
+      type: object
+      properties:
+        provider:
+          type: string
+          description: Always `x402` — the only billing protocol accepted.
+        mode:
+          type: string
+          description: 'Seller mode: `live` charges for real, `dev` lets calls through unpaid.'
+        network:
+          type: string
+          description: 'USDC network: `base` in production, `base-sepolia` in staging.'
+        chain_id:
+          type: integer
+          description: EVM chain ID of the network above, so the wallet signs on the right chain.
+        pay_to:
+          type: string
+          description: Address that receives the payment.
+          nullable: true
+        homolog:
+          type: boolean
+          description: 'Staging seam on: the loop can be closed without spending USDC.'
+        dev:
+          type: boolean
+          description: 'Development mode: the 402 is simulated.'
+        dev_gate:
+          type: string
+          description: How dev mode is unlocked, when it exists.
+          nullable: true
+        facilitator:
+          type: string
+          description: URL of the facilitator that verifies and settles the payment.
+        asset:
+          type: string
+          description: Accepted currency — always `USDC`.
+        asset_address:
+          type: string
+          description: USDC contract on the network above.
+        faucet:
+          type: string
+          description: Test-USDC faucet; only on base-sepolia.
+          nullable: true
+        wallets:
+          type: object
+          description: Links to wallets that speak x402 (metamask, coinbase, base_app).
+        product:
+          type: string
+          description: Name of the product charging.
+        free_max_endpoints:
+          type: integer
+          description: Free monitors per owner.
+        free_min_interval_sec:
+          type: integer
+          description: Shortest interval that is still free. Below it, it costs.
+        free_email_alerts:
+          type: integer
+          description: Free e-mail alert registrations; the rest is paid (it is SES cost per miss).
+        prices:
+          allOf:
+          - $ref: '#/components/schemas/Precos'
+          description: What each paid action costs, in USD.
+        usage:
+          type: object
+          description: How much of the allowance the owner has used.
+        trial:
+          allOf:
+          - $ref: '#/components/schemas/Trial'
+          description: The account's trial, when there is a session.
+      required:
+      - provider
+      - mode
+      - network
+      - chain_id
+      - pay_to
+      - homolog
+      - dev
+      - dev_gate
+      - facilitator
+      - asset
+      - asset_address
+      - faucet
+      - wallets
+      - product
+      - free_max_endpoints
+      - free_min_interval_sec
+      - free_email_alerts
+      - prices
+      - usage
+      - trial
+      description: 'Everything that decides whether the next call will cost: x402 configuration, allowance, prices and trial.'
+    Trial:
+      type: object
+      properties:
+        days:
+          type: integer
+          description: Trial length in days.
+        active:
+          type: boolean
+          description: Whether it is in force now.
+        days_left:
+          type: integer
+          description: How many days remain.
+        ends_at:
+          type: string
+          description: When it ends (UTC).
+          nullable: true
+        granted:
+          type: boolean
+          description: '`true` when THIS call granted the trial.'
+      required:
+      - days
+      - active
+      - ends_at
+      description: The period without the usage paywall that confirming the e-mail grants. It is the alternative to paying.
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A `sess_…` session also works.'

@@ -1,0 +1,218 @@
+openapi: 3.2.0
+info:
+  title: HookPulse Auth API
+  version: 2d690e87
+  description: 'Dead-man switch for webhooks/cron. Index: GET /api/.'
+servers:
+- url: https://hookpulse.net
+tags:
+- name: Auth
+paths:
+  /api/auth/start:
+    post:
+      operationId: post_api_auth_start
+      summary: Sends the 6-digit code by e-mail to create the account or sign in to it
+      description: 'Returns: { ok }'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  description: E-mail that will receive the code.
+              required:
+              - email
+            example:
+              email: you@example.com
+      responses:
+        '200':
+          description: '{ ok }'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ok'
+        '400':
+          description: E-mail missing or malformed.
+        '429':
+          description: Too many requests for the same e-mail.
+      tags:
+      - Auth
+  /api/auth/verify:
+    post:
+      operationId: post_api_auth_verify
+      summary: Exchanges the code for a session — and confirming the e-mail grants the trial…
+      description: 'It is the free way out: confirming the e-mail is worth a period without the usage paywall (extra monitor and fast interval). E-mail alerts beyond the first stay paid, because they are SES cost per miss.
+
+        Returns: { ok, token, user{id,email}, trial{days,active,days_left?,ends_at,granted?} }'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  description: The same e-mail as in `/api/auth/start`.
+                code:
+                  type: string
+                  description: The 6 digits that arrived by e-mail.
+              required:
+              - email
+              - code
+            example:
+              email: you@example.com
+              code: '123456'
+      responses:
+        '200':
+          description: '{ ok, token, user{id,email}, trial{days,active,days_left?,ends_at,granted?} }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    description: Always `true` when the code matched.
+                  token:
+                    type: string
+                    description: 'Session `sess_…` to use in `Authorization: Bearer`.'
+                  user:
+                    allOf:
+                    - $ref: '#/components/schemas/Conta'
+                    description: The person who just signed in.
+                  trial:
+                    allOf:
+                    - $ref: '#/components/schemas/Trial'
+                    description: 'The trial, with `granted: true` when this call is the one that granted it.'
+                required:
+                - ok
+                - token
+                - user
+                - trial
+        '400':
+          description: Wrong or expired code.
+        '429':
+          description: Too many attempts.
+      tags:
+      - Auth
+  /api/auth/claim:
+    post:
+      operationId: post_api_auth_claim
+      summary: Moves the guest's monitors to the signed-in account
+      description: 'Returns: { ok, claimed }'
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                guest_token:
+                  type: string
+                  description: Guest `hp_…` whose monitors move to the account.
+              required:
+              - guest_token
+            example:
+              guest_token: hp_…
+      responses:
+        '200':
+          description: '{ ok, claimed }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    description: Always `true`.
+                  claimed:
+                    type: integer
+                    description: How many monitors changed owner.
+                required:
+                - ok
+                - claimed
+        '400':
+          description: '`guest_token` missing.'
+        '401':
+          description: No credential, or an invalid one. See this endpoint's auth.
+      tags:
+      - Auth
+  /api/auth/logout:
+    post:
+      operationId: post_api_auth_logout
+      summary: Invalidates the current session
+      description: 'Returns: { ok }'
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: '{ ok }'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ok'
+        '401':
+          description: No credential, or an invalid one. See this endpoint's auth.
+      tags:
+      - Auth
+components:
+  schemas:
+    Ok:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          description: Always `true` — failure comes as a 4xx/5xx status, not as `ok:false`.
+      required:
+      - ok
+      description: Write confirmation with no body of its own to return.
+    Conta:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ID of the account.
+        email:
+          type: string
+          description: E-mail confirmed by code.
+      required:
+      - id
+      - email
+      description: The person behind the session.
+    Trial:
+      type: object
+      properties:
+        days:
+          type: integer
+          description: Trial length in days.
+        active:
+          type: boolean
+          description: Whether it is in force now.
+        days_left:
+          type: integer
+          description: How many days remain.
+        ends_at:
+          type: string
+          description: When it ends (UTC).
+          nullable: true
+        granted:
+          type: boolean
+          description: '`true` when THIS call granted the trial.'
+      required:
+      - days
+      - active
+      - ends_at
+      description: The period without the usage paywall that confirming the e-mail grants. It is the alternative to paying.
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A `sess_…` session also works.'
