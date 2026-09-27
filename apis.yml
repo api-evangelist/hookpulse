@@ -17,7 +17,7 @@ tags:
 - Dead-mans-switch
 - Alerting
 - Status Pages
-- agent-native
+- Agent-Native
 - MCP
 - x402
 - Micropayments
@@ -34,12 +34,12 @@ tags_raw:
 - MCP
 - x402
 - Micropayments
+- agent-native
 apis:
 - aid: hookpulse:hookpulse-apis-json-api
   name: HookPulse Apis.json API
   description: The Apis.json API from HookPulse — 1 operation(s) for apis.json.
   humanURL: https://hookpulse.net/api/
-  baseURL: https://hookpulse.net
   tags:
   - APIs.json
   tags_raw:
@@ -61,7 +61,6 @@ apis:
   name: HookPulse Auth API
   description: The Auth API from HookPulse — 4 operation(s) for auth.
   humanURL: https://hookpulse.net/api/
-  baseURL: https://hookpulse.net
   tags:
   - Authentication
   tags_raw:
@@ -83,7 +82,6 @@ apis:
   name: HookPulse Billing API
   description: The Billing API from HookPulse — 1 operation(s) for billing.
   humanURL: https://hookpulse.net/api/
-  baseURL: https://hookpulse.net
   tags:
   - Billing
   properties:
@@ -103,7 +101,6 @@ apis:
   name: HookPulse Contact API
   description: The Contact API from HookPulse — 1 operation(s) for contact.
   humanURL: https://hookpulse.net/api/
-  baseURL: https://hookpulse.net
   tags:
   - Contact
   properties:
@@ -123,7 +120,6 @@ apis:
   name: HookPulse Credito API
   description: The Credito API from HookPulse — 1 operation(s) for credito.
   humanURL: https://hookpulse.net/api/
-  baseURL: https://hookpulse.net
   tags:
   - Credito
   properties:
@@ -143,7 +139,6 @@ apis:
   name: HookPulse Endpoints API
   description: The Endpoints API from HookPulse — 3 operation(s) for endpoints.
   humanURL: https://hookpulse.net/api/
-  baseURL: https://hookpulse.net
   tags: []
   tags_raw:
   - Endpoints
@@ -164,7 +159,6 @@ apis:
   name: HookPulse Guest API
   description: The Guest API from HookPulse — 1 operation(s) for guest.
   humanURL: https://hookpulse.net/api/
-  baseURL: https://hookpulse.net
   tags:
   - Guest
   properties:
@@ -184,7 +178,6 @@ apis:
   name: HookPulse Health API
   description: The Health API from HookPulse — 1 operation(s) for health.
   humanURL: https://hookpulse.net/api/
-  baseURL: https://hookpulse.net
   tags:
   - Health
   properties:
@@ -204,7 +197,6 @@ apis:
   name: HookPulse Hook Pulse API
   description: The HookPulse API from HookPulse — 1 operation(s) for hookpulse.
   humanURL: https://hookpulse.net/api/
-  baseURL: https://hookpulse.net
   tags:
   - HookPulse
   properties:
@@ -224,7 +216,6 @@ apis:
   name: HookPulse In API
   description: The In API from HookPulse — 1 operation(s) for in.
   humanURL: https://hookpulse.net/api/
-  baseURL: https://hookpulse.net
   tags:
   - In
   properties:
@@ -244,7 +235,6 @@ apis:
   name: HookPulse MCP API
   description: The Mcp API from HookPulse — 1 operation(s) for mcp.
   humanURL: https://hookpulse.net/api/
-  baseURL: https://hookpulse.net
   tags:
   - MCP
   tags_raw:
@@ -266,7 +256,6 @@ apis:
   name: HookPulse Me API
   description: The Me API from HookPulse — 1 operation(s) for me.
   humanURL: https://hookpulse.net/api/
-  baseURL: https://hookpulse.net
   tags:
   - Me
   properties:
@@ -286,7 +275,6 @@ apis:
   name: HookPulse Metrics API
   description: The Metrics API from HookPulse — 1 operation(s) for metrics.
   humanURL: https://hookpulse.net/api/
-  baseURL: https://hookpulse.net
   tags:
   - Metrics
   properties:
@@ -306,7 +294,6 @@ apis:
   name: HookPulse Okf API
   description: The Okf API from HookPulse — 1 operation(s) for okf.
   humanURL: https://hookpulse.net/api/
-  baseURL: https://hookpulse.net
   tags:
   - Okf
   properties:
@@ -326,7 +313,6 @@ apis:
   name: HookPulse S API
   description: The S API from HookPulse — 2 operation(s) for s.
   humanURL: https://hookpulse.net/api/
-  baseURL: https://hookpulse.net
   tags:
   - S
   properties:
@@ -346,7 +332,6 @@ apis:
   name: HookPulse Status Feed API
   description: The Status Feed API from HookPulse — 1 operation(s) for status feed.
   humanURL: https://hookpulse.net/api/
-  baseURL: https://hookpulse.net
   tags:
   - Status Feed
   properties:
@@ -366,7 +351,6 @@ apis:
   name: HookPulse Templates API
   description: The Templates API from HookPulse — 1 operation(s) for templates.
   humanURL: https://hookpulse.net/api/
-  baseURL: https://hookpulse.net
   tags:
   - Templates
   properties:
@@ -386,7 +370,6 @@ apis:
   name: HookPulse Visit API
   description: The Visit API from HookPulse — 1 operation(s) for visit.
   humanURL: https://hookpulse.net/api/
-  baseURL: https://hookpulse.net
   tags:
   - Visit
   properties:
@@ -406,7 +389,6 @@ apis:
   name: HookPulse .well Known API
   description: The .well Known API from HookPulse — 1 operation(s) for .well known.
   humanURL: https://hookpulse.net/api/
-  baseURL: https://hookpulse.net
   tags:
   - .well Known
   properties:

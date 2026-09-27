@@ -27,6 +27,30 @@ paths:
       - Billing
 components:
   schemas:
+    Trial:
+      type: object
+      properties:
+        days:
+          type: integer
+          description: Trial length in days.
+        active:
+          type: boolean
+          description: Whether it is in force now.
+        days_left:
+          type: integer
+          description: How many days remain.
+        ends_at:
+          type: string
+          description: When it ends (UTC).
+          nullable: true
+        granted:
+          type: boolean
+          description: '`true` when THIS call granted the trial.'
+      required:
+      - days
+      - active
+      - ends_at
+      description: The period without the usage paywall that confirming the e-mail grants. It is the alternative to paying.
     Precos:
       type: object
       properties:
@@ -138,30 +162,6 @@ components:
       - usage
       - trial
       description: 'Everything that decides whether the next call will cost: x402 configuration, allowance, prices and trial.'
-    Trial:
-      type: object
-      properties:
-        days:
-          type: integer
-          description: Trial length in days.
-        active:
-          type: boolean
-          description: Whether it is in force now.
-        days_left:
-          type: integer
-          description: How many days remain.
-        ends_at:
-          type: string
-          description: When it ends (UTC).
-          nullable: true
-        granted:
-          type: boolean
-          description: '`true` when THIS call granted the trial.'
-      required:
-      - days
-      - active
-      - ends_at
-      description: The period without the usage paywall that confirming the e-mail grants. It is the alternative to paying.
   securitySchemes:
     bearerAuth:
       type: http
