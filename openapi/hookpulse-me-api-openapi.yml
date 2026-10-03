@@ -46,19 +46,6 @@ paths:
       - Me
 components:
   schemas:
-    Conta:
-      type: object
-      properties:
-        id:
-          type: string
-          description: ID of the account.
-        email:
-          type: string
-          description: E-mail confirmed by code.
-      required:
-      - id
-      - email
-      description: The person behind the session.
     Monitor:
       type: object
       properties:
@@ -150,30 +137,6 @@ components:
       - created_at
       - ingest_url
       description: 'A dead-man switch: the thing you make ping. If the ping stops for longer than `interval_sec`, it becomes `overdue` and the alert goes out.'
-    Trial:
-      type: object
-      properties:
-        days:
-          type: integer
-          description: Trial length in days.
-        active:
-          type: boolean
-          description: Whether it is in force now.
-        days_left:
-          type: integer
-          description: How many days remain.
-        ends_at:
-          type: string
-          description: When it ends (UTC).
-          nullable: true
-        granted:
-          type: boolean
-          description: '`true` when THIS call granted the trial.'
-      required:
-      - days
-      - active
-      - ends_at
-      description: The period without the usage paywall that confirming the e-mail grants. It is the alternative to paying.
     Templates:
       type: object
       properties:
@@ -199,6 +162,43 @@ components:
       - miss_json
       - miss_url_hint
       description: How to ping and what we send when it fails. It is what saves guessing the format.
+    Trial:
+      type: object
+      properties:
+        days:
+          type: integer
+          description: Trial length in days.
+        active:
+          type: boolean
+          description: Whether it is in force now.
+        days_left:
+          type: integer
+          description: How many days remain.
+        ends_at:
+          type: string
+          description: When it ends (UTC).
+          nullable: true
+        granted:
+          type: boolean
+          description: '`true` when THIS call granted the trial.'
+      required:
+      - days
+      - active
+      - ends_at
+      description: The period without the usage paywall that confirming the e-mail grants. It is the alternative to paying.
+    Conta:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ID of the account.
+        email:
+          type: string
+          description: E-mail confirmed by code.
+      required:
+      - id
+      - email
+      description: The person behind the session.
   securitySchemes:
     bearerAuth:
       type: http
