@@ -85,30 +85,6 @@ components:
       - inactive
       - all_ok
       description: The set in numbers. `all_ok` is the field for an external monitor to check without understanding the rest.
-    FeedStatus:
-      type: object
-      properties:
-        generated_at:
-          type: string
-          description: When this dashboard was built (UTC).
-        summary:
-          allOf:
-          - $ref: '#/components/schemas/ResumoStatus'
-          description: The number you look at first.
-        endpoints:
-          type: array
-          items:
-            $ref: '#/components/schemas/LinhaStatus'
-          description: One row per monitor, with no secret at all.
-        _links:
-          type: object
-          description: This dashboard as JSON, as RSS and the API index.
-      required:
-      - generated_at
-      - summary
-      - endpoints
-      - _links
-      description: The owner's whole status dashboard, addressable by URL. The token in the path IS the credential — whoever has the link, reads.
     LinhaStatus:
       type: object
       properties:
@@ -151,6 +127,30 @@ components:
       - miss_count
       - alerts
       description: 'A monitor on the public dashboard: enough to know the state, with no token, no e-mail and no ingest id.'
+    FeedStatus:
+      type: object
+      properties:
+        generated_at:
+          type: string
+          description: When this dashboard was built (UTC).
+        summary:
+          allOf:
+          - $ref: '#/components/schemas/ResumoStatus'
+          description: The number you look at first.
+        endpoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinhaStatus'
+          description: One row per monitor, with no secret at all.
+        _links:
+          type: object
+          description: This dashboard as JSON, as RSS and the API index.
+      required:
+      - generated_at
+      - summary
+      - endpoints
+      - _links
+      description: The owner's whole status dashboard, addressable by URL. The token in the path IS the credential — whoever has the link, reads.
   securitySchemes:
     bearerAuth:
       type: http

@@ -259,6 +259,31 @@ paths:
       - Endpoints
 components:
   schemas:
+    Templates:
+      type: object
+      properties:
+        ingest_curl:
+          type: string
+          description: A `curl` that works as proof of life.
+        ingest_cron:
+          type: string
+          description: The equivalent crontab line.
+        ingest_n8n:
+          type: string
+          description: How to call the ingest from n8n.
+        miss_json:
+          type: string
+          description: The exact JSON we POST to `alert_url` when the silence becomes a miss.
+        miss_url_hint:
+          type: string
+          description: What works as `alert_url` — public HTTPS only.
+      required:
+      - ingest_curl
+      - ingest_cron
+      - ingest_n8n
+      - miss_json
+      - miss_url_hint
+      description: How to ping and what we send when it fails. It is what saves guessing the format.
     Ok:
       type: object
       properties:
@@ -268,6 +293,118 @@ components:
       required:
       - ok
       description: Write confirmation with no body of its own to return.
+    Precos:
+      type: object
+      properties:
+        extra_endpoint_usd:
+          type: number
+          description: Monitor beyond the allowance.
+        fast_interval_usd:
+          type: number
+          description: Interval below the free minimum.
+        email_alert_usd:
+          type: number
+          description: E-mail alert registration beyond the first.
+        contact_agent_usd:
+          type: number
+          description: Agent contact.
+      required:
+      - extra_endpoint_usd
+      - fast_interval_usd
+      - email_alert_usd
+      - contact_agent_usd
+      description: Prices in force, in dollars. Read them here, not from the documentation.
+    Monitor:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Monitor ID; it is the `:id` of the ingest URL.
+        name:
+          type: string
+          description: Name you gave it, to recognise it in the alert.
+        interval_sec:
+          type: integer
+          description: Tolerated silence, in seconds. Past that, it is a miss.
+        alert_to:
+          type: string
+          description: E-mail alerted on a miss.
+          nullable: true
+        alert_url:
+          type: string
+          description: HTTPS URL that receives a POST on a miss (Slack, Discord, n8n).
+          nullable: true
+        last_event_at:
+          type: string
+          description: Last ping received (UTC); `null` while it never pinged.
+          nullable: true
+        last_status:
+          type: integer
+          description: HTTP status the last ping sent, when it did.
+          nullable: true
+        last_latency_ms:
+          type: integer
+          description: Latency reported in the last ping, in ms.
+          nullable: true
+        miss_count:
+          type: integer
+          description: How many times this monitor has gone silent.
+        alerted_at:
+          type: string
+          description: When the last alert went out — it is what holds the 1 alert/24h cap.
+          nullable: true
+        active:
+          type: boolean
+          description: Whether the monitor is on.
+        healthy:
+          type: boolean
+          description: '`true` when it has pinged at least once and is not overdue.'
+        overdue:
+          type: boolean
+          description: '`true` when the silence passed `interval_sec`.'
+        waiting_first_ping:
+          type: boolean
+          description: '`true` while it never pinged. Neither healthy nor overdue: nobody has wired it yet.'
+        created_at:
+          type: string
+          description: When the monitor was created (UTC).
+        ingest_url:
+          type: string
+          description: The URL your cron/webhook calls to prove life.
+        token:
+          type: string
+          description: Read token of this monitor. Only comes on creation and to the owner.
+        status_url:
+          type: string
+          description: Status of this monitor with the token already in the query.
+        events_url:
+          type: string
+          description: Latest pings with the token already in the query.
+        curl_example:
+          type: string
+          description: The ingest `curl`, ready to paste in the cron.
+        templates:
+          allOf:
+          - $ref: '#/components/schemas/Templates'
+          description: Ingest snippets and the alert body, with this monitor already in them.
+      required:
+      - id
+      - name
+      - interval_sec
+      - alert_to
+      - alert_url
+      - last_event_at
+      - last_status
+      - last_latency_ms
+      - miss_count
+      - alerted_at
+      - active
+      - healthy
+      - overdue
+      - waiting_first_ping
+      - created_at
+      - ingest_url
+      description: 'A dead-man switch: the thing you make ping. If the ping stops for longer than `interval_sec`, it becomes `overdue` and the alert goes out.'
     Billing:
       type: object
       properties:
@@ -382,143 +519,6 @@ components:
       - latency_ms
       - source
       description: A ping received at the ingest — the proof of life.
-    Monitor:
-      type: object
-      properties:
-        id:
-          type: string
-          description: Monitor ID; it is the `:id` of the ingest URL.
-        name:
-          type: string
-          description: Name you gave it, to recognise it in the alert.
-        interval_sec:
-          type: integer
-          description: Tolerated silence, in seconds. Past that, it is a miss.
-        alert_to:
-          type: string
-          description: E-mail alerted on a miss.
-          nullable: true
-        alert_url:
-          type: string
-          description: HTTPS URL that receives a POST on a miss (Slack, Discord, n8n).
-          nullable: true
-        last_event_at:
-          type: string
-          description: Last ping received (UTC); `null` while it never pinged.
-          nullable: true
-        last_status:
-          type: integer
-          description: HTTP status the last ping sent, when it did.
-          nullable: true
-        last_latency_ms:
-          type: integer
-          description: Latency reported in the last ping, in ms.
-          nullable: true
-        miss_count:
-          type: integer
-          description: How many times this monitor has gone silent.
-        alerted_at:
-          type: string
-          description: When the last alert went out — it is what holds the 1 alert/24h cap.
-          nullable: true
-        active:
-          type: boolean
-          description: Whether the monitor is on.
-        healthy:
-          type: boolean
-          description: '`true` when it has pinged at least once and is not overdue.'
-        overdue:
-          type: boolean
-          description: '`true` when the silence passed `interval_sec`.'
-        waiting_first_ping:
-          type: boolean
-          description: '`true` while it never pinged. Neither healthy nor overdue: nobody has wired it yet.'
-        created_at:
-          type: string
-          description: When the monitor was created (UTC).
-        ingest_url:
-          type: string
-          description: The URL your cron/webhook calls to prove life.
-        token:
-          type: string
-          description: Read token of this monitor. Only comes on creation and to the owner.
-        status_url:
-          type: string
-          description: Status of this monitor with the token already in the query.
-        events_url:
-          type: string
-          description: Latest pings with the token already in the query.
-        curl_example:
-          type: string
-          description: The ingest `curl`, ready to paste in the cron.
-        templates:
-          allOf:
-          - $ref: '#/components/schemas/Templates'
-          description: Ingest snippets and the alert body, with this monitor already in them.
-      required:
-      - id
-      - name
-      - interval_sec
-      - alert_to
-      - alert_url
-      - last_event_at
-      - last_status
-      - last_latency_ms
-      - miss_count
-      - alerted_at
-      - active
-      - healthy
-      - overdue
-      - waiting_first_ping
-      - created_at
-      - ingest_url
-      description: 'A dead-man switch: the thing you make ping. If the ping stops for longer than `interval_sec`, it becomes `overdue` and the alert goes out.'
-    Precos:
-      type: object
-      properties:
-        extra_endpoint_usd:
-          type: number
-          description: Monitor beyond the allowance.
-        fast_interval_usd:
-          type: number
-          description: Interval below the free minimum.
-        email_alert_usd:
-          type: number
-          description: E-mail alert registration beyond the first.
-        contact_agent_usd:
-          type: number
-          description: Agent contact.
-      required:
-      - extra_endpoint_usd
-      - fast_interval_usd
-      - email_alert_usd
-      - contact_agent_usd
-      description: Prices in force, in dollars. Read them here, not from the documentation.
-    Templates:
-      type: object
-      properties:
-        ingest_curl:
-          type: string
-          description: A `curl` that works as proof of life.
-        ingest_cron:
-          type: string
-          description: The equivalent crontab line.
-        ingest_n8n:
-          type: string
-          description: How to call the ingest from n8n.
-        miss_json:
-          type: string
-          description: The exact JSON we POST to `alert_url` when the silence becomes a miss.
-        miss_url_hint:
-          type: string
-          description: What works as `alert_url` — public HTTPS only.
-      required:
-      - ingest_curl
-      - ingest_cron
-      - ingest_n8n
-      - miss_json
-      - miss_url_hint
-      description: How to ping and what we send when it fails. It is what saves guessing the format.
     Trial:
       type: object
       properties:
