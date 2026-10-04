@@ -419,6 +419,9 @@ x-enrichment:
   artifacts_added: 28
   pass: local-v3
 common:
+- type: CapabilityMap
+  url: capabilities/hookpulse-capability-edges.yml
+  name: HookPulse Business Capability Map
 - type: MCPServer
   url: https://hookpulse.net/mcp
 - type: Website
