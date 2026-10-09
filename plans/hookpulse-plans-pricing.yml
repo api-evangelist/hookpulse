@@ -44,3 +44,28 @@ plans:
     excluded:
       - e-mail alerts beyond the 1st stay $0.10
     activation: sign up and confirm e-mail (POST /api/auth/start → POST /api/auth/verify)
+x-canonical:
+  generated: '2026-10-08'
+  vocabulary: all/0-working/economics/plans-canonical.yml
+  models:
+  - free
+  units: []
+  plans:
+  - name: Free
+    access: other
+    model: free
+    model_how: derived
+    units: []
+    periods: []
+  - name: Pay-per-action (x402)
+    access: other
+    model: unstated
+    model_how: derived
+    units: []
+    periods: []
+  - name: Trial
+    access: other
+    model: free
+    model_how: derived
+    units: []
+    periods: []
