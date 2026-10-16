@@ -14,7 +14,7 @@ edges:
     registered_name: net.hookpulse/hookpulse
     register_id: net.hookpulse/hookpulse
     detected_by: sweep-agent-tools.py
-    detected: '2026-10-14'
+    detected: '2026-10-15'
   mcp_registry:
     servers:
     - net.hookpulse/hookpulse
