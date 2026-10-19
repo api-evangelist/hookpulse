@@ -1,8 +1,8 @@
 openapi: 3.2.0
 info:
   title: HookPulse Billing API
-  version: 2d690e87
-  description: 'Dead-man switch for webhooks/cron. Index: GET /api/.'
+  version: 1d751aaf
+  description: Monitor scheduled tasks and receive alerts for missing check-ins. Read GET /api/ for the API index.
 servers:
 - url: https://hookpulse.net
 tags:
@@ -12,13 +12,13 @@ paths:
     get:
       operationId: billing
       summary: Free allowance, x402 prices in force and the state of the account's trial
-      description: 'Check before creating the second monitor or lowering the interval: it is the number IN FORCE, not the documentation''s.
+      description: 'Check before creating the second monitor or lowering the interval: it is the number IN FORCE, not the documentation''s. After the account''s trial, alerts from monitors beyond the free ten need a plan (`GET /api/plans`).
 
-        Returns: { provider, mode, network, chain_id, pay_to, homolog, dev, dev_gate, facilitator, asset, asset_address, faucet, wallets, product, free_max_endpoints, free_min_interval_sec, free_email_alerts, prices{extra_endpoint_usd,fast_interval_usd,email_alert_usd,contact_agent_usd}, usage, trial{days,active,days_left?,ends_at,granted?} }'
+        Returns: { provider, mode, network, chain_id, pay_to, homolog, dev, dev_gate, alternavel, gratis?, cobrados?, facilitator, asset, asset_address, faucet, wallets, product, free_max_endpoints, free_min_interval_sec, free_email_alerts, prices{extra_endpoint_usd,fast_interval_usd,email_alert_usd}, usage, trial{days,active,days_left?,ends_at} }'
       security: []
       responses:
         '200':
-          description: '{ provider, mode, network, chain_id, pay_to, homolog, dev, dev_gate, facilitator, asset, asset_address, faucet, wallets, product, free_max_endpoints, free_min_interval_sec, free_email_alerts, prices{extra_endpoint_usd,fast_interval_usd,email_alert_usd,contact_agent_usd}, usage, trial{days,active,days_left?,ends_at,granted?} }'
+          description: '{ provider, mode, network, chain_id, pay_to, homolog, dev, dev_gate, alternavel, gratis?, cobrados?, facilitator, asset, asset_address, faucet, wallets, product, free_max_endpoints, free_min_interval_sec, free_email_alerts, prices{extra_endpoint_usd,fast_interval_usd,email_alert_usd}, usage, trial{days,active,days_left?,ends_at} }'
           content:
             application/json:
               schema:
@@ -39,15 +39,32 @@ components:
         email_alert_usd:
           type: number
           description: E-mail alert registration beyond the first.
-        contact_agent_usd:
-          type: number
-          description: Agent contact.
       required:
       - extra_endpoint_usd
       - fast_interval_usd
       - email_alert_usd
-      - contact_agent_usd
       description: Prices in force, in dollars. Read them here, not from the documentation.
+    Trial:
+      type: object
+      properties:
+        days:
+          type: integer
+          description: Trial length in days.
+        active:
+          type: boolean
+          description: Whether it is in force now.
+        days_left:
+          type: integer
+          description: How many days remain.
+        ends_at:
+          type: string
+          description: When it ends (UTC).
+          nullable: true
+      required:
+      - days
+      - active
+      - ends_at
+      description: The period without the usage paywall that each account gets once, counted from its first use of HookPulse. It is the alternative to paying.
     Billing:
       type: object
       properties:
@@ -74,9 +91,21 @@ components:
           type: boolean
           description: 'Development mode: the 402 is simulated.'
         dev_gate:
-          type: string
-          description: How dev mode is unlocked, when it exists.
-          nullable: true
+          type: boolean
+          description: A homologation credential is configured; this grants no access.
+        alternavel:
+          type: boolean
+          description: 'Dev only: a request with `X-MM-Pagamento: real` pays for real instead of in test mode.'
+        gratis:
+          type: array
+          items:
+            type: string
+          description: Temporarily free SKUs.
+        cobrados:
+          type: array
+          items:
+            type: string
+          description: SKUs charged even when `gratis` has `*`.
         facilitator:
           type: string
           description: URL of the facilitator that verifies and settles the payment.
@@ -104,7 +133,7 @@ components:
           description: Shortest interval that is still free. Below it, it costs.
         free_email_alerts:
           type: integer
-          description: Free e-mail alert registrations; the rest is paid (it is SES cost per miss).
+          description: Free e-mail alert registrations; additional registrations are paid.
         prices:
           allOf:
           - $ref: '#/components/schemas/Precos'
@@ -125,6 +154,7 @@ components:
       - homolog
       - dev
       - dev_gate
+      - alternavel
       - facilitator
       - asset
       - asset_address
@@ -138,32 +168,32 @@ components:
       - usage
       - trial
       description: 'Everything that decides whether the next call will cost: x402 configuration, allowance, prices and trial.'
-    Trial:
-      type: object
-      properties:
-        days:
-          type: integer
-          description: Trial length in days.
-        active:
-          type: boolean
-          description: Whether it is in force now.
-        days_left:
-          type: integer
-          description: How many days remain.
-        ends_at:
-          type: string
-          description: When it ends (UTC).
-          nullable: true
-        granted:
-          type: boolean
-          description: '`true` when THIS call granted the trial.'
-      required:
-      - days
-      - active
-      - ends_at
-      description: The period without the usage paywall that confirming the e-mail grants. It is the alternative to paying.
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
-      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A `sess_…` session also works.'
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A signed-in account (cookie) also works and takes precedence.'
+    globalAccount:
+      type: apiKey
+      in: cookie
+      name: __Host-mm-auth
+      description: Global session in the product's HttpOnly cookie; writes require exact Origin and X-CSRF-Token.
+    contaChaveApi:
+      type: http
+      scheme: bearer
+      bearerFormat: mmk_…
+      description: 'Account API key: `Authorization: Bearer mmk_…` or `X-Api-Key: mmk_…`. Created on the account page (API keys), valid only in the product where it was created; it acts as the account (or the organization that owns it).'
+    carteiraAgente:
+      type: http
+      scheme: bearer
+      bearerFormat: mmw_…
+      description: 'Wallet credential of an agent without an account (`Authorization: Bearer mmw_…`, 30 days, this product only): POST /api/auth/wallet/agent/start, sign the message with the wallet, POST /api/auth/wallet/agent/token. The owner is `x402:<address>`.'
+x-service-info:
+  categories:
+  - monitoring
+  - cron
+  - devops
+  docs:
+    homepage: https://hookpulse.net/
+    apiReference: https://hookpulse.net/developers
+    llms: https://hookpulse.net/llms.txt

@@ -1,0 +1,72 @@
+openapi: 3.2.0
+info:
+  title: HookPulse Pagamento API
+  version: 1d751aaf
+  description: Monitor scheduled tasks and receive alerts for missing check-ins. Read GET /api/ for the API index.
+servers:
+- url: https://hookpulse.net
+tags:
+- name: Pagamento
+paths:
+  /api/pagamento/aberto:
+    post:
+      operationId: post_api_pagamento_aberto
+      summary: The interface reports a visible payment prompt. Agents must not call this route
+      description: 'An empty same-origin report, sent automatically when a payment prompt becomes visible. It starts no payment, grants no access and receives no identity or credentials. It writes no database row per report. Counts events, not unique people. The private operator dashboard separates API payment requests and browser payment views per UTC day; the two counts may overlap.
+
+        Returns: 202 with no body when accepted; 204 when ignored. Always no-store.'
+      security: []
+      parameters:
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+        description: The page origin, identical to this route's origin.
+      - name: Sec-Fetch-Site
+        in: header
+        required: true
+        schema:
+          type: string
+        description: '`same-origin`, set by the browser.'
+      - name: X-MM-Payment-View
+        in: header
+        required: true
+        schema:
+          type: string
+        description: '`1`, set by the shared component.'
+      responses:
+        '202':
+          description: 202 with no body when accepted; 204 when ignored. Always no-store.
+      tags:
+      - Pagamento
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A signed-in account (cookie) also works and takes precedence.'
+    globalAccount:
+      type: apiKey
+      in: cookie
+      name: __Host-mm-auth
+      description: Global session in the product's HttpOnly cookie; writes require exact Origin and X-CSRF-Token.
+    contaChaveApi:
+      type: http
+      scheme: bearer
+      bearerFormat: mmk_…
+      description: 'Account API key: `Authorization: Bearer mmk_…` or `X-Api-Key: mmk_…`. Created on the account page (API keys), valid only in the product where it was created; it acts as the account (or the organization that owns it).'
+    carteiraAgente:
+      type: http
+      scheme: bearer
+      bearerFormat: mmw_…
+      description: 'Wallet credential of an agent without an account (`Authorization: Bearer mmw_…`, 30 days, this product only): POST /api/auth/wallet/agent/start, sign the message with the wallet, POST /api/auth/wallet/agent/token. The owner is `x402:<address>`.'
+x-service-info:
+  categories:
+  - monitoring
+  - cron
+  - devops
+  docs:
+    homepage: https://hookpulse.net/
+    apiReference: https://hookpulse.net/developers
+    llms: https://hookpulse.net/llms.txt

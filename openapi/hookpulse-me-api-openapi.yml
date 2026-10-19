@@ -1,8 +1,8 @@
 openapi: 3.2.0
 info:
   title: HookPulse Me API
-  version: 2d690e87
-  description: 'Dead-man switch for webhooks/cron. Index: GET /api/.'
+  version: 1d751aaf
+  description: Monitor scheduled tasks and receive alerts for missing check-ins. Read GET /api/ for the API index.
 servers:
 - url: https://hookpulse.net
 tags:
@@ -12,12 +12,14 @@ paths:
     get:
       operationId: get_api_me
       summary: The session's account, its monitors and the state of the trial
-      description: 'Returns: { user{id,email}, endpoints[{id,name,interval_sec,alert_to,alert_url,last_event_at,last_status,last_latency_ms,miss_count,alerted_at,active,healthy,overdue,waiting_first_ping,created_at,ingest_url,token?,status_url?,events_url?,curl_example?,templates?}], trial{days,active,days_left?,ends_at,granted?} }'
+      description: 'The account is the house account, served by the account library in this process; `user.id` is the account id itself — the owner of the monitors and devices here.
+
+        Returns: { user{id,email}, profile, endpoints[{id,kind,check?,site?,name,interval_sec,cron,tz,grace_sec,next_expected_at,alert_to,alert_url,last_event_at,last_status,last_latency_ms,last_start_at,last_run_id,last_duration_ms,duration,max_duration_sec,alert_pending,miss_count,alerts_on_hold?,alerted_at,alert_repeat_sec,tags,paused_until,state,active,healthy,overdue,waiting_first_ping,created_at,ingest_url?,token?,status_url?,events_url?,curl_example?,templates?}], trial{days,active,days_left?,ends_at} }'
       security:
-      - bearerAuth: []
+      - globalAccount: []
       responses:
         '200':
-          description: '{ user{id,email}, endpoints[{id,name,interval_sec,alert_to,alert_url,last_event_at,last_status,last_latency_ms,miss_count,alerted_at,active,healthy,overdue,waiting_first_ping,created_at,ingest_url,token?,status_url?,events_url?,curl_example?,templates?}], trial{days,active,days_left?,ends_at,granted?} }'
+          description: '{ user{id,email}, profile, endpoints[{id,kind,check?,site?,name,interval_sec,cron,tz,grace_sec,next_expected_at,alert_to,alert_url,last_event_at,last_status,last_latency_ms,last_start_at,last_run_id,last_duration_ms,duration,max_duration_sec,alert_pending,miss_count,alerts_on_hold?,alerted_at,alert_repeat_sec,tags,paused_until,state,active,healthy,overdue,waiting_first_ping,created_at,ingest_url?,token?,status_url?,events_url?,curl_example?,templates?}], trial{days,active,days_left?,ends_at} }'
           content:
             application/json:
               schema:
@@ -27,6 +29,9 @@ paths:
                     allOf:
                     - $ref: '#/components/schemas/Conta'
                     description: The person who owns the session.
+                  profile:
+                    type: object
+                    description: 'Global profile: `name`, `locale`, `timeZone`, `theme`, `revision`.'
                   endpoints:
                     type: array
                     items:
@@ -35,13 +40,16 @@ paths:
                   trial:
                     allOf:
                     - $ref: '#/components/schemas/Trial'
-                    description: 'The trial: how many days, whether active and when it ends.'
+                    description: 'The trial: how many days, whether active and when it ends (counted from the account''s first use of HookPulse).'
                 required:
                 - user
+                - profile
                 - endpoints
                 - trial
         '401':
-          description: No credential, or an invalid one. See this endpoint's auth.
+          description: invalid_session
+        '503':
+          description: auth_unavailable
       tags:
       - Me
 components:
@@ -60,29 +68,96 @@ components:
           description: How to call the ingest from n8n.
         miss_json:
           type: string
-          description: The exact JSON we POST to `alert_url` when the silence becomes a miss.
+          description: 'The exact JSON we POST to `alert_url` when a monitor goes bad. `reason` says which way: `silence` (it stopped pinging) or `fail` (it reported an explicit failure).'
+        recovery_json:
+          type: string
+          description: The JSON we POST when the monitor comes back, with `down_since`, `recovered_at` and `downtime_sec`. It has its own `type` (`hookpulse.recovery`) so an integration filtering by type never shows good news as an incident.
         miss_url_hint:
           type: string
           description: What works as `alert_url` — public HTTPS only.
+        github_actions:
+          type: string
+          description: 'A scheduled GitHub Actions workflow with the HookPulse step at the end: no secret, the job''s OIDC token identifies the repository.'
       required:
       - ingest_curl
       - ingest_cron
       - ingest_n8n
       - miss_json
+      - recovery_json
       - miss_url_hint
-      description: How to ping and what we send when it fails. It is what saves guessing the format.
+      - github_actions
+      description: How to ping, what we send when it fails and what we send when it comes back. It is what saves guessing the format.
+    Trial:
+      type: object
+      properties:
+        days:
+          type: integer
+          description: Trial length in days.
+        active:
+          type: boolean
+          description: Whether it is in force now.
+        days_left:
+          type: integer
+          description: How many days remain.
+        ends_at:
+          type: string
+          description: When it ends (UTC).
+          nullable: true
+      required:
+      - days
+      - active
+      - ends_at
+      description: The period without the usage paywall that each account gets once, counted from its first use of HookPulse. It is the alternative to paying.
+    Conta:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ID of the account.
+        email:
+          type: string
+          description: E-mail confirmed by code.
+      required:
+      - id
+      - email
+      description: The person behind the session.
     Monitor:
       type: object
       properties:
         id:
           type: string
           description: Monitor ID; it is the `:id` of the ingest URL.
+        kind:
+          type: string
+          description: '`routine` (it pings us) or `site` (we call it).'
+        check:
+          type: object
+          description: 'Only on a site: what HookPulse calls — `url`, `method` (`GET` or `HEAD`), `expect_status` (`200-399`, a range `a-b` or one code), `keyword` (text that must be in the first 64 KB, or `null`) and `timeout_ms`.'
+        site:
+          type: object
+          description: 'Only on a site: `state` (`waiting`, `up` or `down`), `changed_at` (when it last changed), `last_check_at`, `last_ok`, `last_status` (HTTP status, `null` when nothing answered), `last_reason` (why it failed: `status`, `keyword`, `timeout`, `dns`, `connection`, `tls`, `private_address` or `network`; `null` when it answered), `last_ms` and `certificate_until` (HTTPS certificate expiry).'
         name:
           type: string
           description: Name you gave it, to recognise it in the alert.
         interval_sec:
           type: integer
-          description: Tolerated silence, in seconds. Past that, it is a miss.
+          description: Tolerated silence, in seconds. Past that, it is a miss. With `cron` set it is read-only and mirrors the schedule's window.
+        cron:
+          type: string
+          description: Five-field cron expression, when the monitor runs on a schedule instead of an interval.
+          nullable: true
+        tz:
+          type: string
+          description: IANA time zone the `cron` is read in.
+          nullable: true
+        grace_sec:
+          type: integer
+          description: Tolerance after the scheduled time before it counts as late.
+          nullable: true
+        next_expected_at:
+          type: string
+          description: When the next scheduled run is due (UTC). Computed forward on creation, on patch and on every ping; late is this plus `grace_sec`.
+          nullable: true
         alert_to:
           type: string
           description: E-mail alerted on a miss.
@@ -103,13 +178,54 @@ components:
           type: integer
           description: Latency reported in the last ping, in ms.
           nullable: true
+        last_start_at:
+          type: string
+          description: When the current run said it started (`/in/:id/start`), while it has not finished.
+          nullable: true
+        last_run_id:
+          type: string
+          description: The `rid` of the run that is currently open, when the `start` carried one.
+          nullable: true
+        last_duration_ms:
+          type: integer
+          description: How long the last run took, measured between its `start` and its outcome.
+          nullable: true
+        duration:
+          type: object
+          description: 'Duration statistics over the last runs we measured: `samples`, `p50_ms` and `max_ms`. `p50_ms` is the low median, so it is always a duration that actually happened. Only on `GET /api/endpoints/:id` — the list does not pay for it. All null when nothing has been measured.'
+        max_duration_sec:
+          type: integer
+          description: 'Ceiling for an open run: past it, the next 5-minute check alerts with `reason: "too_long"`. `null` when it is off.'
+          nullable: true
+        alert_pending:
+          type: string
+          description: 'An outcome waiting for the next 5-minute check to alert: `fail`, `recovery`, or `null` when there is nothing pending.'
+          nullable: true
         miss_count:
           type: integer
           description: How many times this monitor has gone silent.
+        alerts_on_hold:
+          type: boolean
+          description: '`true` when the monitor is beyond what its owner covers. It keeps checking, and its alerts wait for a plan (a guest signs in first). `coverage` on `GET /api/endpoints` tells why. On the list, `GET /api/endpoints/:id` and creation.'
         alerted_at:
           type: string
-          description: When the last alert went out — it is what holds the 1 alert/24h cap.
+          description: When the last alert went out — it is what holds the repeat cap.
           nullable: true
+        alert_repeat_sec:
+          type: integer
+          description: 'EFFECTIVE gap before the same incident alerts again: what you asked for, or your `interval_sec` when that is longer, or the 86400 default.'
+        tags:
+          type: array
+          items:
+            type: string
+          description: The monitor's tags, normalised and sorted. Empty when it has none.
+        paused_until:
+          type: string
+          description: End of the maintenance window (UTC). While it is in the future the monitor is not checked and never alerts.
+          nullable: true
+        state:
+          type: string
+          description: 'The state in one word: `ok`, `late`, `down` (a site that does not answer), `waiting` (never pinged, or a site not checked yet), `paused` or `inactive`. Read this instead of re-deriving precedence from the booleans.'
         active:
           type: boolean
           description: Whether the monitor is on.
@@ -127,7 +243,7 @@ components:
           description: When the monitor was created (UTC).
         ingest_url:
           type: string
-          description: The URL your cron/webhook calls to prove life.
+          description: 'The URL your cron/webhook calls to prove life. Not on a site: a site does not ping.'
         token:
           type: string
           description: Read token of this monitor. Only comes on creation and to the owner.
@@ -146,61 +262,62 @@ components:
           description: Ingest snippets and the alert body, with this monitor already in them.
       required:
       - id
+      - kind
       - name
       - interval_sec
+      - cron
+      - tz
+      - grace_sec
+      - next_expected_at
       - alert_to
       - alert_url
       - last_event_at
       - last_status
       - last_latency_ms
+      - last_start_at
+      - last_run_id
+      - last_duration_ms
+      - duration
+      - max_duration_sec
+      - alert_pending
       - miss_count
       - alerted_at
+      - alert_repeat_sec
+      - tags
+      - paused_until
+      - state
       - active
       - healthy
       - overdue
       - waiting_first_ping
       - created_at
-      - ingest_url
-      description: 'A dead-man switch: the thing you make ping. If the ping stops for longer than `interval_sec`, it becomes `overdue` and the alert goes out.'
-    Conta:
-      type: object
-      properties:
-        id:
-          type: string
-          description: ID of the account.
-        email:
-          type: string
-          description: E-mail confirmed by code.
-      required:
-      - id
-      - email
-      description: The person behind the session.
-    Trial:
-      type: object
-      properties:
-        days:
-          type: integer
-          description: Trial length in days.
-        active:
-          type: boolean
-          description: Whether it is in force now.
-        days_left:
-          type: integer
-          description: How many days remain.
-        ends_at:
-          type: string
-          description: When it ends (UTC).
-          nullable: true
-        granted:
-          type: boolean
-          description: '`true` when THIS call granted the trial.'
-      required:
-      - days
-      - active
-      - ends_at
-      description: The period without the usage paywall that confirming the e-mail grants. It is the alternative to paying.
+      description: 'A monitor. A routine (`kind: "routine"`) is a dead-man switch: the thing you make ping. If the ping stops for longer than `interval_sec` — or, with a schedule, past `next_expected_at` plus `grace_sec` — it becomes `overdue` and the alert goes out. A site (`kind: "site"`) is the other way round: HookPulse calls its `check.url` every `interval_sec` and alerts when it goes down (`state: "down"`) and when it is back.'
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
-      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A `sess_…` session also works.'
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A signed-in account (cookie) also works and takes precedence.'
+    globalAccount:
+      type: apiKey
+      in: cookie
+      name: __Host-mm-auth
+      description: Global session in the product's HttpOnly cookie; writes require exact Origin and X-CSRF-Token.
+    contaChaveApi:
+      type: http
+      scheme: bearer
+      bearerFormat: mmk_…
+      description: 'Account API key: `Authorization: Bearer mmk_…` or `X-Api-Key: mmk_…`. Created on the account page (API keys), valid only in the product where it was created; it acts as the account (or the organization that owns it).'
+    carteiraAgente:
+      type: http
+      scheme: bearer
+      bearerFormat: mmw_…
+      description: 'Wallet credential of an agent without an account (`Authorization: Bearer mmw_…`, 30 days, this product only): POST /api/auth/wallet/agent/start, sign the message with the wallet, POST /api/auth/wallet/agent/token. The owner is `x402:<address>`.'
+x-service-info:
+  categories:
+  - monitoring
+  - cron
+  - devops
+  docs:
+    homepage: https://hookpulse.net/
+    apiReference: https://hookpulse.net/developers
+    llms: https://hookpulse.net/llms.txt

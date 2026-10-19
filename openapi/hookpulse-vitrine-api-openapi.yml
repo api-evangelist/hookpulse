@@ -1,0 +1,238 @@
+openapi: 3.2.0
+info:
+  title: HookPulse Vitrine API
+  version: 1d751aaf
+  description: Monitor scheduled tasks and receive alerts for missing check-ins. Read GET /api/ for the API index.
+servers:
+- url: https://hookpulse.net
+tags:
+- name: Vitrine
+paths:
+  /api/vitrine:
+    get:
+      operationId: get_api_vitrine
+      summary: 'The product''s public numbers: traffic, agents, usage and reliability, no money'
+      description: 'Projection published hourly by the house collector, rounded to two significant digits; `null` is a missing measurement, never zero. 15-minute cache with ETag (`If-None-Match` → 304). There is no way to send numbers through this route: publishing belongs to the collector, with its own token.
+
+        Returns: { v, produto, publicado, atualizado_em, stale, nome?, desde?, fuso?, hoje?, dias?, janelas?, visitantes?, pessoas?, agentes?, superficies?, mcp?, uso?, contas?, confiabilidade?, catalogo?, apoio? }'
+      security: []
+      responses:
+        '200':
+          description: '{ v, produto, publicado, atualizado_em, stale, nome?, desde?, fuso?, hoje?, dias?, janelas?, visitantes?, pessoas?, agentes?, superficies?, mcp?, uso?, contas?, confiabilidade?, catalogo?, apoio? }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  v:
+                    type: integer
+                    description: Contract version (1).
+                  produto:
+                    type: string
+                    description: Product id.
+                  publicado:
+                    type: boolean
+                    description: '`false` before the collector''s first publication; then only these five keys come.'
+                  atualizado_em:
+                    type: string
+                    description: When the collector published (ISO 8601).
+                    nullable: true
+                  stale:
+                    type: boolean
+                    description: '`true` when the projection is older than 26 h.'
+                  nome:
+                    type: string
+                    description: Product name.
+                  desde:
+                    type: string
+                    description: First day the series covers.
+                    nullable: true
+                  fuso:
+                    type: string
+                    description: Time zone of the days (`UTC`).
+                  hoje:
+                    type: object
+                    description: 'Today: pages by class (human, AI, bot), API calls by class, machine-surface reads and product usage.'
+                  dias:
+                    type: array
+                    items:
+                      type: object
+                    description: 'Up to 31 days, oldest first: `dia`, `paginas`, `api`, `api_ia`, `maquina`, `visitantes`, `uso`.'
+                  janelas:
+                    type: object
+                    description: 7- and 30-day sums (`d7`, `d30`).
+                  visitantes:
+                    type: object
+                    description: Unique visitors at the edge over 7 days.
+                  pessoas:
+                    type: object
+                    description: 'GA4 when available: users, sessions, countries, devices and who arrived from AI.'
+                    nullable: true
+                  agentes:
+                    type: object
+                    description: The AI agents and bots that read the most, 7 days.
+                  superficies:
+                    type: object
+                    description: Reads of OKF, llms, well-known, OpenAPI and MCP over 7 days.
+                  mcp:
+                    type: object
+                    description: MCP calls over 7 days.
+                  uso:
+                    type: object
+                    description: 'Real product usage per resource: label, today, 7 and 30 days.'
+                  contas:
+                    type: object
+                    description: Users and guests.
+                    nullable: true
+                  confiabilidade:
+                    type: object
+                    description: Share of requests without 5xx over 7 days, and the live build.
+                  catalogo:
+                    type: object
+                    description: Size of the catalog, when the product has one.
+                    nullable: true
+                  apoio:
+                    type: object
+                    description: Impressions and clicks per sponsor, when any.
+                required:
+                - v
+                - produto
+                - publicado
+                - atualizado_em
+                - stale
+      tags:
+      - Vitrine
+  /api/vitrine/operador:
+    get:
+      operationId: get_api_vitrine_operador
+      summary: The product's full document on the operator panel — operator token only
+      description: 'Returns: { produto, atualizado_em, operador }'
+      security: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        schema:
+          type: string
+        description: '`Bearer <METRICS_TOKEN>` — the operator class.'
+      responses:
+        '200':
+          description: '{ produto, atualizado_em, operador }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  produto:
+                    type: string
+                    description: Product id.
+                  atualizado_em:
+                    type: string
+                    description: When the collector published.
+                    nullable: true
+                  operador:
+                    type: object
+                    description: The collector's full document, with what the public projection leaves out.
+                    nullable: true
+                required:
+                - produto
+                - atualizado_em
+                - operador
+        '401':
+          description: No token, wrong token or a token of another class.
+        '503':
+          description: Worker without `METRICS_TOKEN` or without the control plane.
+      tags:
+      - Vitrine
+  /api/vitrine/painel:
+    get:
+      operationId: get_api_vitrine_painel
+      summary: The whole house panel, in the shape the gm reads — operator token only
+      description: 'Returns: { apps, updated?, totals? }'
+      security: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        schema:
+          type: string
+        description: '`Bearer <METRICS_TOKEN>` — the operator class.'
+      responses:
+        '200':
+          description: '{ apps, updated?, totals? }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  apps:
+                    type: array
+                    items:
+                      type: object
+                    description: One operator document per product, ordered by id.
+                  updated:
+                    type: string
+                    description: When the collector closed the round.
+                  totals:
+                    type: object
+                    description: House totals.
+                required:
+                - apps
+        '401':
+          description: No token, wrong token or a token of another class.
+        '503':
+          description: Worker without `METRICS_TOKEN` or without the control plane.
+      tags:
+      - Vitrine
+  /api/vitrine/cursores:
+    get:
+      operationId: get_api_vitrine_cursores
+      summary: The resolved-error cursor per product (`borda`, `cli`) — operator token only
+      description: 'Returns: JSON: `{ [product]: { borda?: ISO, cli?: ISO } }`; empty is `{}`.'
+      security: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        schema:
+          type: string
+        description: '`Bearer <METRICS_TOKEN>` — the operator class.'
+      responses:
+        '200':
+          description: 'JSON: `{ [product]: { borda?: ISO, cli?: ISO } }`; empty is `{}`.'
+        '401':
+          description: No token, wrong token or a token of another class.
+        '503':
+          description: Worker without `METRICS_TOKEN` or without the control plane.
+      tags:
+      - Vitrine
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A signed-in account (cookie) also works and takes precedence.'
+    globalAccount:
+      type: apiKey
+      in: cookie
+      name: __Host-mm-auth
+      description: Global session in the product's HttpOnly cookie; writes require exact Origin and X-CSRF-Token.
+    contaChaveApi:
+      type: http
+      scheme: bearer
+      bearerFormat: mmk_…
+      description: 'Account API key: `Authorization: Bearer mmk_…` or `X-Api-Key: mmk_…`. Created on the account page (API keys), valid only in the product where it was created; it acts as the account (or the organization that owns it).'
+    carteiraAgente:
+      type: http
+      scheme: bearer
+      bearerFormat: mmw_…
+      description: 'Wallet credential of an agent without an account (`Authorization: Bearer mmw_…`, 30 days, this product only): POST /api/auth/wallet/agent/start, sign the message with the wallet, POST /api/auth/wallet/agent/token. The owner is `x402:<address>`.'
+x-service-info:
+  categories:
+  - monitoring
+  - cron
+  - devops
+  docs:
+    homepage: https://hookpulse.net/
+    apiReference: https://hookpulse.net/developers
+    llms: https://hookpulse.net/llms.txt

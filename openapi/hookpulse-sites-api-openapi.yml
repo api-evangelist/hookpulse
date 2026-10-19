@@ -1,0 +1,68 @@
+openapi: 3.2.0
+info:
+  title: HookPulse Sites API
+  version: 1d751aaf
+  description: Monitor scheduled tasks and receive alerts for missing check-ins. Read GET /api/ for the API index.
+servers:
+- url: https://hookpulse.net
+tags:
+- name: Sites
+paths:
+  /api/sites/estado:
+    get:
+      operationId: list_sites
+      summary: The state of every site you monitor, with the last check
+      description: 'The same answer is the snapshot of the live subscription (`/api/realtime/`): after it, every check arrives as an event, so a screen never has to poll.
+
+        Returns: { sites }'
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: '{ sites }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sites:
+                    type: array
+                    items:
+                      type: object
+                    description: 'One per site: `id`, `name`, `state` (`ok`, `down`, `waiting`, `paused`) and `site` (as in `Monitor.site`).'
+                required:
+                - sites
+        '401':
+          description: No credential, or an invalid one. See this endpoint's auth.
+      tags:
+      - Sites
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A signed-in account (cookie) also works and takes precedence.'
+    globalAccount:
+      type: apiKey
+      in: cookie
+      name: __Host-mm-auth
+      description: Global session in the product's HttpOnly cookie; writes require exact Origin and X-CSRF-Token.
+    contaChaveApi:
+      type: http
+      scheme: bearer
+      bearerFormat: mmk_…
+      description: 'Account API key: `Authorization: Bearer mmk_…` or `X-Api-Key: mmk_…`. Created on the account page (API keys), valid only in the product where it was created; it acts as the account (or the organization that owns it).'
+    carteiraAgente:
+      type: http
+      scheme: bearer
+      bearerFormat: mmw_…
+      description: 'Wallet credential of an agent without an account (`Authorization: Bearer mmw_…`, 30 days, this product only): POST /api/auth/wallet/agent/start, sign the message with the wallet, POST /api/auth/wallet/agent/token. The owner is `x402:<address>`.'
+x-service-info:
+  categories:
+  - monitoring
+  - cron
+  - devops
+  docs:
+    homepage: https://hookpulse.net/
+    apiReference: https://hookpulse.net/developers
+    llms: https://hookpulse.net/llms.txt

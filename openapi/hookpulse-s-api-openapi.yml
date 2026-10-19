@@ -1,20 +1,20 @@
 openapi: 3.2.0
 info:
   title: HookPulse S API
-  version: 2d690e87
-  description: 'Dead-man switch for webhooks/cron. Index: GET /api/.'
+  version: 1d751aaf
+  description: Monitor scheduled tasks and receive alerts for missing check-ins. Read GET /api/ for the API index.
 servers:
 - url: https://hookpulse.net
 tags:
 - name: S
 paths:
-  /s/{token}.json:
+  /s/{token}:
     get:
-      operationId: get_s_by_token_json
-      summary: The status dashboard as JSON, with no header at all — the token in the path is…
-      description: '`summary.all_ok` is the field for an external monitor to check without understanding the rest. The `id` of each row is a label of this dashboard, not the ingest id — rotating the feed changes both.
+      operationId: get_s_by_token
+      summary: The status dashboard as a page — the link you send to the team, no header, no…
+      description: '`/s/:token.html` is the same page. Rendered on the server, so the content is in the body and the link previews anywhere. **`noindex` by default**: the URL is the credential — whoever has the link reads the dashboard. It carries the same data as `.json`, plus each monitor''s badge.
 
-        Returns: { generated_at, summary{total,ok,overdue,waiting_first_ping,inactive,all_ok}, endpoints[{id,name,status,healthy,overdue,interval_sec,last_event_at,miss_count,alerts}], _links }'
+        Returns: `text/html` — the dashboard with the summary, one row per monitor and its badge.'
       security: []
       parameters:
       - name: token
@@ -22,9 +22,34 @@ paths:
         required: true
         schema:
           type: string
+        description: Feed token, from `Feed.token`.
+        example: k7m2p9r4t6v8w1y3z5b7c9d1
       responses:
         '200':
-          description: '{ generated_at, summary{total,ok,overdue,waiting_first_ping,inactive,all_ok}, endpoints[{id,name,status,healthy,overdue,interval_sec,last_event_at,miss_count,alerts}], _links }'
+          description: '`text/html` — the dashboard with the summary, one row per monitor and its badge.'
+        '404':
+          description: Unknown feed token.
+      tags:
+      - S
+  /s/{token}.json:
+    get:
+      operationId: get_s_by_token_json
+      summary: The status dashboard as JSON, with no header at all — the token in the path is…
+      description: '`summary.all_ok` is the field for an external monitor to check without understanding the rest. The `id` of each row is a label of this dashboard, not the ingest id — rotating the feed changes both.
+
+        Returns: { generated_at, summary{total,ok,overdue,waiting_first_ping,inactive,all_ok}, endpoints[{badge,id,name,status,healthy,overdue,interval_sec,last_event_at,miss_count,alerts}], _links }'
+      security: []
+      parameters:
+      - name: token
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Feed token, from `Feed.token`, with `.json` at the end.
+        example: k7m2p9r4t6v8w1y3z5b7c9d1
+      responses:
+        '200':
+          description: '{ generated_at, summary{total,ok,overdue,waiting_first_ping,inactive,all_ok}, endpoints[{badge,id,name,status,healthy,overdue,interval_sec,last_event_at,miss_count,alerts}], _links }'
           content:
             application/json:
               schema:
@@ -47,6 +72,8 @@ paths:
         required: true
         schema:
           type: string
+        description: Feed token, from `Feed.token`, with `.rss` at the end.
+        example: k7m2p9r4t6v8w1y3z5b7c9d1
       responses:
         '200':
           description: '`application/rss+xml` — one item per monitor, with the state in the title.'
@@ -54,8 +81,136 @@ paths:
           description: Unknown feed token.
       tags:
       - S
+  /s/{token}/metrics:
+    get:
+      operationId: get_s_by_token_metrics
+      summary: The same dashboard as a Prometheus scrape target — point your existing alerting…
+      description: 'Three series labelled per monitor: `hookpulse_last_ping_age_seconds` (gauge; absent for a monitor that never checked in, because a zero there would read as ''just pinged''), `hookpulse_late` (gauge, 1 past the deadline) and `hookpulse_miss_total` (counter). The `id` label is this dashboard''s label, not the ingest id. Reading costs no writes, so scrape as often as you like — and the URL is the credential, so treat it like one.
+
+        Returns: `text/plain; version=0.0.4` — the Prometheus exposition format.'
+      security: []
+      parameters:
+      - name: token
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Feed token, from `Feed.token`, with `/metrics` at the end.
+        example: k7m2p9r4t6v8w1y3z5b7c9d1
+      responses:
+        '200':
+          description: '`text/plain; version=0.0.4` — the Prometheus exposition format.'
+        '404':
+          description: Unknown feed token.
+      tags:
+      - S
+  /s/{token}/{monitor}.svg:
+    get:
+      operationId: get_s_by_token_by_monitor_svg
+      summary: A badge of one monitor, as an SVG you paste straight into a README
+      description: '`:monitor` is the **published** id — the one in `FeedStatus.endpoints[].id`, and the same URL comes ready in `FeedStatus.endpoints[].badge`. The ingest id is deliberately not accepted: whoever has it can ping the monitor and silence the alarm. Three colours: green `ok`, red `late`, grey for `paused`, `waiting` and `inactive`. No external font, no request to anyone else, no write on our side; cached for 60 seconds with an `ETag`.
+
+        Returns: `image/svg+xml` — a 20px-high badge with the monitor name and its state.'
+      security: []
+      parameters:
+      - name: token
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Feed token, from `Feed.token`.
+        example: k7m2p9r4t6v8w1y3z5b7c9d1
+      - name: monitor
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Published id of the monitor, from `FeedStatus.endpoints[].id` (24 hex).
+        example: 9f3c2b1d7a4e58b0c2d4e6f8
+      responses:
+        '200':
+          description: '`image/svg+xml` — a 20px-high badge with the monitor name and its state.'
+        '404':
+          description: Unknown feed token, or a monitor that does not belong to this feed.
+      tags:
+      - S
 components:
   schemas:
+    FeedStatus:
+      type: object
+      properties:
+        generated_at:
+          type: string
+          description: When this dashboard was built (UTC).
+        summary:
+          allOf:
+          - $ref: '#/components/schemas/ResumoStatus'
+          description: The number you look at first.
+        endpoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinhaStatus'
+          description: One row per monitor, with no secret at all.
+        _links:
+          type: object
+          description: This dashboard as JSON, as RSS and the API index.
+      required:
+      - generated_at
+      - summary
+      - endpoints
+      - _links
+      description: The owner's whole status dashboard, addressable by URL. The token in the path IS the credential — whoever has the link, reads.
+    LinhaStatus:
+      type: object
+      properties:
+        badge:
+          type: string
+          description: URL of this monitor's SVG badge, ready to paste into a README. It carries the published id, never the ingest one.
+        id:
+          type: string
+          description: 'Stable label of THIS dashboard, derived from the pair (feed token, monitor) — it is not the ingest id, and it changes when the owner rotates the token. The real id does not leave here because `GET /in/:id` asks for no credential: publishing it would give whoever only reads the power to reset the silence counter.'
+        name:
+          type: string
+          description: Name given by the owner.
+        status:
+          type: string
+          description: State in one word.
+          enum:
+          - ok
+          - atrasado
+          - esperando
+          - inativo
+        healthy:
+          type: boolean
+          description: Whether it is healthy now.
+        overdue:
+          type: boolean
+          description: Whether it is silent beyond the interval.
+        interval_sec:
+          type: integer
+          description: Tolerated silence, in seconds.
+        last_event_at:
+          type: string
+          description: Last ping (UTC).
+          nullable: true
+        miss_count:
+          type: integer
+          description: How many misses have happened.
+        alerts:
+          type: object
+          description: 'Which alert channels are on: `{ email, url }` — booleans, never the address.'
+      required:
+      - badge
+      - id
+      - name
+      - status
+      - healthy
+      - overdue
+      - interval_sec
+      - last_event_at
+      - miss_count
+      - alerts
+      description: 'A monitor on the public dashboard: enough to know the state, with no token, no e-mail and no ingest id.'
     ResumoStatus:
       type: object
       properties:
@@ -85,74 +240,32 @@ components:
       - inactive
       - all_ok
       description: The set in numbers. `all_ok` is the field for an external monitor to check without understanding the rest.
-    LinhaStatus:
-      type: object
-      properties:
-        id:
-          type: string
-          description: 'Stable label of THIS dashboard, derived from the pair (feed token, monitor) — it is not the ingest id, and it changes when the owner rotates the token. The real id does not leave here because `GET /in/:id` asks for no credential: publishing it would give whoever only reads the power to reset the silence counter.'
-        name:
-          type: string
-          description: Name given by the owner.
-        status:
-          type: string
-          description: State in one word.
-        healthy:
-          type: boolean
-          description: Whether it is healthy now.
-        overdue:
-          type: boolean
-          description: Whether it is silent beyond the interval.
-        interval_sec:
-          type: integer
-          description: Tolerated silence, in seconds.
-        last_event_at:
-          type: string
-          description: Last ping (UTC).
-          nullable: true
-        miss_count:
-          type: integer
-          description: How many misses have happened.
-        alerts:
-          type: object
-          description: 'Which alert channels are on: `{ email, url }` — booleans, never the address.'
-      required:
-      - id
-      - name
-      - status
-      - healthy
-      - overdue
-      - interval_sec
-      - last_event_at
-      - miss_count
-      - alerts
-      description: 'A monitor on the public dashboard: enough to know the state, with no token, no e-mail and no ingest id.'
-    FeedStatus:
-      type: object
-      properties:
-        generated_at:
-          type: string
-          description: When this dashboard was built (UTC).
-        summary:
-          allOf:
-          - $ref: '#/components/schemas/ResumoStatus'
-          description: The number you look at first.
-        endpoints:
-          type: array
-          items:
-            $ref: '#/components/schemas/LinhaStatus'
-          description: One row per monitor, with no secret at all.
-        _links:
-          type: object
-          description: This dashboard as JSON, as RSS and the API index.
-      required:
-      - generated_at
-      - summary
-      - endpoints
-      - _links
-      description: The owner's whole status dashboard, addressable by URL. The token in the path IS the credential — whoever has the link, reads.
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
-      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A `sess_…` session also works.'
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A signed-in account (cookie) also works and takes precedence.'
+    globalAccount:
+      type: apiKey
+      in: cookie
+      name: __Host-mm-auth
+      description: Global session in the product's HttpOnly cookie; writes require exact Origin and X-CSRF-Token.
+    contaChaveApi:
+      type: http
+      scheme: bearer
+      bearerFormat: mmk_…
+      description: 'Account API key: `Authorization: Bearer mmk_…` or `X-Api-Key: mmk_…`. Created on the account page (API keys), valid only in the product where it was created; it acts as the account (or the organization that owns it).'
+    carteiraAgente:
+      type: http
+      scheme: bearer
+      bearerFormat: mmw_…
+      description: 'Wallet credential of an agent without an account (`Authorization: Bearer mmw_…`, 30 days, this product only): POST /api/auth/wallet/agent/start, sign the message with the wallet, POST /api/auth/wallet/agent/token. The owner is `x402:<address>`.'
+x-service-info:
+  categories:
+  - monitoring
+  - cron
+  - devops
+  docs:
+    homepage: https://hookpulse.net/
+    apiReference: https://hookpulse.net/developers
+    llms: https://hookpulse.net/llms.txt

@@ -1,0 +1,256 @@
+openapi: 3.2.0
+info:
+  title: HookPulse Plans API
+  version: 1d751aaf
+  description: Monitor scheduled tasks and receive alerts for missing check-ins. Read GET /api/ for the API index.
+servers:
+- url: https://hookpulse.net
+tags:
+- name: Plans
+paths:
+  /api/plans:
+    get:
+      operationId: list_plans
+      summary: The plans for sale and the authenticated account or wallet's active plan
+      description: 'Each purchase lasts 30 days, with no automatic renewal. Without an account or wallet credential, `account` is `null`.
+
+        Returns: { plans, account }'
+      security: []
+      parameters:
+      - name: resumo
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Use `1` to read the active plan without cancellation, retention and refund details.
+        example: '1'
+      responses:
+        '200':
+          description: '{ plans, account }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plans:
+                    type: array
+                    items:
+                      type: object
+                    description: 'Each plan: `id`, `name`, `extra_monitors`, `days`, `price_usd`, `automatic_renewal`, `charged_now` and the `buy` URL.'
+                  account:
+                    type: object
+                    description: '`active` (the plan that ends last, with `valid_until`) and `cancel` (what cancelling now removes, the free-days offer and the refund).'
+                    nullable: true
+                required:
+                - plans
+                - account
+        '401':
+          description: session_ended
+        '503':
+          description: auth_unavailable
+      tags:
+      - Plans
+  /api/plans/{plan}:
+    post:
+      operationId: buy_plan
+      summary: Buys a plan for the account or paying wallet
+      description: 'Each purchase lasts 30 days, with no automatic renewal. Without payment, the answer is 402 with the price. Pay with prepaid credit (`X-Credito`) or x402 (`PAYMENT-SIGNATURE` v2 or `X-PAYMENT` v1). Without an account, the verified paying wallet owns the purchase. Use wallet agent authentication to read its plan, or claim it after account sign-in. The `compra` mark prevents repeat credit debits. An x402 nonce can settle only once; keep the receipt after a delivery error.
+
+        Returns: { plan, extra_monitors_added, valid_until, automatic_renewal, account, _links }'
+      security: []
+      parameters:
+      - name: plan
+        in: path
+        required: true
+        schema:
+          type: string
+        description: '`starter` (40 more monitors, up to 50), `team` (90 more monitors, up to 100), `business` (490 more monitors, up to 500)'
+        example: starter
+      - name: compra
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Mark of one credit purchase, 8 to 64 letters, digits, `-` or `_`. Repeating it with the same credit token does not debit again.
+        example: purchase-2026-10-12
+      responses:
+        '200':
+          description: '{ plan, extra_monitors_added, valid_until, automatic_renewal, account, _links }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plan:
+                    type: string
+                    description: The plan bought.
+                  extra_monitors_added:
+                    type: number
+                    description: Units granted by this purchase.
+                  valid_until:
+                    type: string
+                    description: When this purchase ends (ISO 8601).
+                  automatic_renewal:
+                    type: boolean
+                    description: '`false` for Pix, USDC and credit.'
+                  account:
+                    type: object
+                    description: The active plan for the owner; `null` if its summary is unavailable.
+                    nullable: true
+                  _links:
+                    type: object
+                    description: Plans URL and, for a wallet purchase, wallet authentication and claim URLs.
+                required:
+                - plan
+                - extra_monitors_added
+                - valid_until
+                - automatic_renewal
+                - account
+                - _links
+        '401':
+          description: An explicit account, wallet or credit credential was refused.
+        '402':
+          description: 'Payment required: the price and the accepted payments.'
+        '403':
+          description: Writes with the account cookie need the same Origin and `X-CSRF-Token`.
+        '404':
+          description: Unknown plan (`unknown_plan`).
+        '409':
+          description: Plans are not on sale now (`sales_closed`) or billing is off (`billing_off`).
+      tags:
+      - Plans
+  /api/plans/cancel:
+    post:
+      operationId: cancel_plan
+      summary: 'Cancels the active plan now: the monthly card subscription stops, and a…'
+      description: 'Send `{ "accept_data_removal": true }`: what the plan added ends now (`account.cancel.losses` in `GET /api/plans` says what), including a period already paid that has not started yet, such as a renewal. A purchase made less than 7 days ago and a paid period that has not started go back the same way they were paid (card or Pix); USDC is refunded by the team.
+
+        Returns: { canceled, refund, account }'
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accept_data_removal:
+                  type: boolean
+                  description: 'Must be `true`: you accept losing what the plan added.'
+              required:
+              - accept_data_removal
+            example:
+              accept_data_removal: true
+      responses:
+        '200':
+          description: '{ canceled, refund, account }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  canceled:
+                    type: boolean
+                    description: '`true` when a valid plan ended.'
+                  refund:
+                    type: object
+                    description: '`method` (`original`, `manual` or `none`), `amount_cents` and its `currency` (`brl` when Asaas refunds, `usd` when Stripe refunds; `null` when both do).'
+                    nullable: true
+                  account:
+                    type: object
+                    description: The account state after cancelling, as in `GET /api/plans`.
+                required:
+                - canceled
+                - refund
+                - account
+        '400':
+          description: 'Missing `accept_data_removal: true` (`confirmation_required`).'
+        '401':
+          description: Sign in first (`account_required`), or the session ended (`session_ended`).
+        '403':
+          description: Writes with the account cookie need the same Origin and `X-CSRF-Token`.
+      tags:
+      - Plans
+  /api/plans/{plan}/grace:
+    post:
+      operationId: post_api_plans_by_plan_grace
+      summary: 'Takes the free-days offer from the cancellation: the offered plan, free for 7…'
+      description: '`account.cancel.offer` in `GET /api/plans` says which plan and for how long. Nothing renews by itself.
+
+        Returns: { plan, valid_until, price_usd, account }'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: plan
+        in: path
+        required: true
+        schema:
+          type: string
+        description: '`starter` (40 more monitors, up to 50), `team` (90 more monitors, up to 100), `business` (490 more monitors, up to 500)'
+        example: starter
+      responses:
+        '200':
+          description: '{ plan, valid_until, price_usd, account }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plan:
+                    type: string
+                    description: The plan granted.
+                  valid_until:
+                    type: string
+                    description: When the free days end.
+                  price_usd:
+                    type: number
+                    description: Always `0`.
+                  account:
+                    type: object
+                    description: The account state after the offer, as in `GET /api/plans`.
+                required:
+                - plan
+                - valid_until
+                - price_usd
+                - account
+        '401':
+          description: Sign in first (`account_required`), or the session ended (`session_ended`).
+        '403':
+          description: Writes with the account cookie need the same Origin and `X-CSRF-Token`.
+        '404':
+          description: Unknown plan (`unknown_plan`).
+        '409':
+          description: No offer for this account or plan (`offer_unavailable`).
+      tags:
+      - Plans
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A signed-in account (cookie) also works and takes precedence.'
+    globalAccount:
+      type: apiKey
+      in: cookie
+      name: __Host-mm-auth
+      description: Global session in the product's HttpOnly cookie; writes require exact Origin and X-CSRF-Token.
+    contaChaveApi:
+      type: http
+      scheme: bearer
+      bearerFormat: mmk_…
+      description: 'Account API key: `Authorization: Bearer mmk_…` or `X-Api-Key: mmk_…`. Created on the account page (API keys), valid only in the product where it was created; it acts as the account (or the organization that owns it).'
+    carteiraAgente:
+      type: http
+      scheme: bearer
+      bearerFormat: mmw_…
+      description: 'Wallet credential of an agent without an account (`Authorization: Bearer mmw_…`, 30 days, this product only): POST /api/auth/wallet/agent/start, sign the message with the wallet, POST /api/auth/wallet/agent/token. The owner is `x402:<address>`.'
+x-service-info:
+  categories:
+  - monitoring
+  - cron
+  - devops
+  docs:
+    homepage: https://hookpulse.net/
+    apiReference: https://hookpulse.net/developers
+    llms: https://hookpulse.net/llms.txt

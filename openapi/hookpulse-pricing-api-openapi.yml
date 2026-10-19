@@ -1,0 +1,161 @@
+openapi: 3.2.0
+info:
+  title: HookPulse Pricing API
+  version: 1d751aaf
+  description: Monitor scheduled tasks and receive alerts for missing check-ins. Read GET /api/ for the API index.
+servers:
+- url: https://hookpulse.net
+tags:
+- name: Pricing
+paths:
+  /api/pricing:
+    get:
+      operationId: pricing
+      summary: Current prices and free allowances
+      description: 'Returns: { product, quota{free,paid,how_to_pay,live,free_now?,charged_now?,trial?}, pricing, billing, api_index }'
+      security: []
+      responses:
+        '200':
+          description: '{ product, quota{free,paid,how_to_pay,live,free_now?,charged_now?,trial?}, pricing, billing, api_index }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  product:
+                    type: string
+                    description: Product name.
+                  quota:
+                    allOf:
+                    - $ref: '#/components/schemas/PaymentQuota'
+                    description: Public allowances and current list prices; not personal usage.
+                  pricing:
+                    type: string
+                    description: Absolute URL of the current price list.
+                  billing:
+                    type: string
+                    description: Absolute URL of payment discovery or the existing billing summary.
+                  api_index:
+                    type: string
+                    description: Absolute URL of the API catalog.
+                required:
+                - product
+                - quota
+                - pricing
+                - billing
+                - api_index
+        '405':
+          description: Use GET or HEAD.
+      tags:
+      - Pricing
+components:
+  schemas:
+    PaymentPrice:
+      type: object
+      properties:
+        o_que:
+          type: string
+          description: Operation and billing unit.
+        price_usd:
+          type: number
+          description: Current list price in USD.
+      required:
+      - o_que
+      - price_usd
+    PaymentFree:
+      type: object
+      properties:
+        o_que:
+          type: string
+          description: Operation or allowance.
+        limite:
+          type: string
+          description: Allowance and eligibility.
+        janela:
+          type: string
+          description: Reset window, when applicable.
+          nullable: true
+      required:
+      - o_que
+      - limite
+      - janela
+    PaymentQuota:
+      type: object
+      properties:
+        free:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentFree'
+          description: Free allowances and their windows.
+        paid:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentPrice'
+          description: List prices in USD. The operation's 402 is the payable quote.
+        how_to_pay:
+          type: string
+          description: Payment instructions and availability restrictions.
+        live:
+          type: string
+          description: Authoritative product quota endpoint.
+          nullable: true
+        free_now:
+          type: array
+          items:
+            type: string
+          description: SKUs temporarily free despite their list price.
+        charged_now:
+          type: array
+          items:
+            type: string
+          description: SKUs charged at their list price even when free_now has `*`.
+        trial:
+          allOf:
+          - $ref: '#/components/schemas/PaymentTrial'
+          description: Registration trial, when offered.
+      required:
+      - free
+      - paid
+      - how_to_pay
+      - live
+    PaymentTrial:
+      type: object
+      properties:
+        days:
+          type: integer
+          description: Trial duration in days.
+        how:
+          type: string
+          description: Eligibility and activation steps.
+      required:
+      - days
+      - how
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A signed-in account (cookie) also works and takes precedence.'
+    globalAccount:
+      type: apiKey
+      in: cookie
+      name: __Host-mm-auth
+      description: Global session in the product's HttpOnly cookie; writes require exact Origin and X-CSRF-Token.
+    contaChaveApi:
+      type: http
+      scheme: bearer
+      bearerFormat: mmk_…
+      description: 'Account API key: `Authorization: Bearer mmk_…` or `X-Api-Key: mmk_…`. Created on the account page (API keys), valid only in the product where it was created; it acts as the account (or the organization that owns it).'
+    carteiraAgente:
+      type: http
+      scheme: bearer
+      bearerFormat: mmw_…
+      description: 'Wallet credential of an agent without an account (`Authorization: Bearer mmw_…`, 30 days, this product only): POST /api/auth/wallet/agent/start, sign the message with the wallet, POST /api/auth/wallet/agent/token. The owner is `x402:<address>`.'
+x-service-info:
+  categories:
+  - monitoring
+  - cron
+  - devops
+  docs:
+    homepage: https://hookpulse.net/
+    apiReference: https://hookpulse.net/developers
+    llms: https://hookpulse.net/llms.txt

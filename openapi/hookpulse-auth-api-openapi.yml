@@ -1,76 +1,58 @@
 openapi: 3.2.0
 info:
   title: HookPulse Auth API
-  version: 2d690e87
-  description: 'Dead-man switch for webhooks/cron. Index: GET /api/.'
+  version: 1d751aaf
+  description: Monitor scheduled tasks and receive alerts for missing check-ins. Read GET /api/ for the API index.
 servers:
 - url: https://hookpulse.net
 tags:
 - name: Auth
 paths:
-  /api/auth/start:
-    post:
-      operationId: post_api_auth_start
-      summary: Sends the 6-digit code by e-mail to create the account or sign in to it
-      description: 'Returns: { ok }'
+  /api/auth/bootstrap:
+    get:
+      operationId: get_api_auth_bootstrap
+      summary: Prepare the browser for global sign-in
+      description: 'Sets a host-only HttpOnly browser cookie. CSRF is bound to the current session. No CORS.
+
+        Returns: { csrf, context }'
       security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                  description: E-mail that will receive the code.
-              required:
-              - email
-            example:
-              email: you@example.com
       responses:
         '200':
-          description: '{ ok }'
+          description: '{ csrf, context }'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Ok'
+                type: object
+                properties:
+                  csrf:
+                    type: string
+                    description: X-CSRF-Token
+                  context:
+                    type: string
+                    description: Opaque view context, also in X-MM-Context; not a credential / contexto opaco da vista, não é credencial.
+                required:
+                - csrf
+                - context
         '400':
-          description: E-mail missing or malformed.
-        '429':
-          description: Too many requests for the same e-mail.
+          description: invalid_request
+        '403':
+          description: invalid_origin / invalid_csrf
+        '503':
+          description: 'auth_unavailable: a sessão anterior é preservada / the previous session is preserved'
       tags:
       - Auth
-  /api/auth/verify:
+  /api/auth/logout:
     post:
-      operationId: post_api_auth_verify
-      summary: Exchanges the code for a session — and confirming the e-mail grants the trial…
-      description: 'It is the free way out: confirming the e-mail is worth a period without the usage paywall (extra monitor and fast interval). E-mail alerts beyond the first stay paid, because they are SES cost per miss.
+      operationId: post_api_auth_logout
+      summary: Revoke this product session
+      description: 'Bootstrap/CSRF must belong to this browser and session. Other product sessions remain active.
 
-        Returns: { ok, token, user{id,email}, trial{days,active,days_left?,ends_at,granted?} }'
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                  description: The same e-mail as in `/api/auth/start`.
-                code:
-                  type: string
-                  description: The 6 digits that arrived by e-mail.
-              required:
-              - email
-              - code
-            example:
-              email: you@example.com
-              code: '123456'
+        Returns: { ok }'
+      security:
+      - globalAccount: []
       responses:
         '200':
-          description: '{ ok, token, user{id,email}, trial{days,active,days_left?,ends_at,granted?} }'
+          description: '{ ok }'
           content:
             application/json:
               schema:
@@ -78,36 +60,170 @@ paths:
                 properties:
                   ok:
                     type: boolean
-                    description: Always `true` when the code matched.
-                  token:
-                    type: string
-                    description: 'Session `sess_…` to use in `Authorization: Bearer`.'
-                  user:
-                    allOf:
-                    - $ref: '#/components/schemas/Conta'
-                    description: The person who just signed in.
-                  trial:
-                    allOf:
-                    - $ref: '#/components/schemas/Trial'
-                    description: 'The trial, with `granted: true` when this call is the one that granted it.'
+                    description: 'true'
                 required:
                 - ok
-                - token
-                - user
-                - trial
         '400':
-          description: Wrong or expired code.
+          description: invalid_request
+        '403':
+          description: invalid_origin / invalid_csrf
+        '503':
+          description: 'auth_unavailable: a sessão anterior é preservada / the previous session is preserved'
+      tags:
+      - Auth
+  /api/auth/wallet/agent/start:
+    post:
+      operationId: post_api_auth_wallet_agent_start
+      summary: Start the wallet credential of an agent without an account
+      description: 'No account: the wallet proves it is hers by signing the message (EIP-4361). Signing does not pay or transfer anything. The message names this product and lasts 5 minutes. Sign it with personal_sign and send it to /api/auth/wallet/agent/token.
+
+        Returns: { message, issuedAt, expiresIn }'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                address:
+                  type: string
+                  description: 0x…, a carteira (EOA ou contrato na Base)
+              required:
+              - address
+            example:
+              address: '0x2c7536E3605D9C16a7a3D7b1898e529396a65c23'
+      responses:
+        '200':
+          description: '{ message, issuedAt, expiresIn }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: EIP-4361
+                  issuedAt:
+                    type: number
+                    description: segundos / seconds
+                  expiresIn:
+                    type: number
+                    description: '300'
+                required:
+                - message
+                - issuedAt
+                - expiresIn
+        '400':
+          description: invalid_wallet_address
+        '503':
+          description: auth_unavailable
+      tags:
+      - Auth
+  /api/auth/wallet/agent/token:
+    post:
+      operationId: post_api_auth_wallet_agent_token
+      summary: Get the wallet credential (mmw_…) of this product
+      description: 'The wallet''s signature of the start message, checked here (own key) or on Base (contract, EIP-1271/6492). The credential lasts 30 days: send `Authorization: Bearer mmw_…` to the routes that accept the wallet as owner (owner `x402:`). Once the wallet is linked to an account, what it did here moves to the account when the person signs in.
+
+        Returns: { token, owner, expiresAt }'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                address:
+                  type: string
+                  description: 0x…, a mesma carteira do start / the same wallet as in start
+                issuedAt:
+                  type: number
+                  description: o issuedAt do start / start's issuedAt
+                signature:
+                  type: string
+                  description: personal_sign (0x…)
+              required:
+              - address
+              - issuedAt
+              - signature
+            example:
+              address: '0x2c7536E3605D9C16a7a3D7b1898e529396a65c23'
+              issuedAt: 1791400000
+              signature: 0x…
+      responses:
+        '200':
+          description: '{ token, owner, expiresAt }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: mmw_…
+                  owner:
+                    type: string
+                    description: x402:0x…
+                  expiresAt:
+                    type: number
+                    description: segundos / seconds
+                required:
+                - token
+                - owner
+                - expiresAt
+        '400':
+          description: invalid_body
+        '401':
+          description: invalid_wallet
         '429':
-          description: Too many attempts.
+          description: wallet_limited
+        '503':
+          description: wallet_unavailable / auth_unavailable
+      tags:
+      - Auth
+  /api/auth/claim/wallets:
+    post:
+      operationId: post_api_auth_claim_wallets
+      summary: Move to the account what its wallets did without an account
+      description: 'The sign-in window calls it after every sign-in. For each wallet linked to the account: the rights bought here by x402 (owner x402:) and what this product keeps for that owner. Repeating moves nothing.
+
+        Returns: { carteiras, direitos }'
+      security:
+      - globalAccount: []
+      responses:
+        '200':
+          description: '{ carteiras, direitos }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  carteiras:
+                    type: number
+                    description: wallets
+                  direitos:
+                    type: number
+                    description: rights moved
+                required:
+                - carteiras
+                - direitos
+        '401':
+          description: invalid_session
+        '503':
+          description: auth_unavailable
       tags:
       - Auth
   /api/auth/claim:
     post:
       operationId: post_api_auth_claim
-      summary: Moves the guest's monitors to the signed-in account
-      description: 'Returns: { ok, claimed }'
+      summary: 'Moves what the guest created to the signed-in account: monitors, devices and…'
+      description: 'Bootstrap/CSRF of this browser required; the page does it right after sign-in. Only what the guest still owns moves, in one transaction, and anything that collides with what the account already has stays with the guest. What the guest bought moves too. An old unsigned token that owns nothing here is refused. Repeating it is harmless (moves zero).
+
+        Returns: { ok, claimed }'
       security:
-      - bearerAuth: []
+      - globalAccount: []
       requestBody:
         required: true
         content:
@@ -117,11 +233,8 @@ paths:
               properties:
                 guest_token:
                   type: string
-                  description: Guest `hp_…` whose monitors move to the account.
-              required:
-              - guest_token
-            example:
-              guest_token: hp_…
+                  description: Guest `hp_…`; omitted, the `guest` cookie of this browser.
+            example: {}
       responses:
         '200':
           description: '{ ok, claimed }'
@@ -132,87 +245,52 @@ paths:
                 properties:
                   ok:
                     type: boolean
-                    description: Always `true`.
+                    description: Whether the guest was recognized and moved.
                   claimed:
-                    type: integer
-                    description: How many monitors changed owner.
+                    type: object
+                    description: '`product.movidos` (rows moved, per table), `product.apagados` (guest duplicates dropped) and `product.direitos` (purchases moved).'
                 required:
                 - ok
                 - claimed
         '400':
-          description: '`guest_token` missing.'
+          description: invalid_product_claim / invalid_body
         '401':
-          description: No credential, or an invalid one. See this endpoint's auth.
-      tags:
-      - Auth
-  /api/auth/logout:
-    post:
-      operationId: post_api_auth_logout
-      summary: Invalidates the current session
-      description: 'Returns: { ok }'
-      security:
-      - bearerAuth: []
-      responses:
-        '200':
-          description: '{ ok }'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Ok'
-        '401':
-          description: No credential, or an invalid one. See this endpoint's auth.
+          description: invalid_session
+        '403':
+          description: invalid_origin / invalid_csrf
+        '409':
+          description: unknown_guest (em `claimed.reason` / in `claimed.reason`)
+        '503':
+          description: product_claim_pending / auth_unavailable
       tags:
       - Auth
 components:
-  schemas:
-    Conta:
-      type: object
-      properties:
-        id:
-          type: string
-          description: ID of the account.
-        email:
-          type: string
-          description: E-mail confirmed by code.
-      required:
-      - id
-      - email
-      description: The person behind the session.
-    Ok:
-      type: object
-      properties:
-        ok:
-          type: boolean
-          description: Always `true` — failure comes as a 4xx/5xx status, not as `ok:false`.
-      required:
-      - ok
-      description: Write confirmation with no body of its own to return.
-    Trial:
-      type: object
-      properties:
-        days:
-          type: integer
-          description: Trial length in days.
-        active:
-          type: boolean
-          description: Whether it is in force now.
-        days_left:
-          type: integer
-          description: How many days remain.
-        ends_at:
-          type: string
-          description: When it ends (UTC).
-          nullable: true
-        granted:
-          type: boolean
-          description: '`true` when THIS call granted the trial.'
-      required:
-      - days
-      - active
-      - ends_at
-      description: The period without the usage paywall that confirming the e-mail grants. It is the alternative to paying.
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
-      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A `sess_…` session also works.'
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A signed-in account (cookie) also works and takes precedence.'
+    globalAccount:
+      type: apiKey
+      in: cookie
+      name: __Host-mm-auth
+      description: Global session in the product's HttpOnly cookie; writes require exact Origin and X-CSRF-Token.
+    contaChaveApi:
+      type: http
+      scheme: bearer
+      bearerFormat: mmk_…
+      description: 'Account API key: `Authorization: Bearer mmk_…` or `X-Api-Key: mmk_…`. Created on the account page (API keys), valid only in the product where it was created; it acts as the account (or the organization that owns it).'
+    carteiraAgente:
+      type: http
+      scheme: bearer
+      bearerFormat: mmw_…
+      description: 'Wallet credential of an agent without an account (`Authorization: Bearer mmw_…`, 30 days, this product only): POST /api/auth/wallet/agent/start, sign the message with the wallet, POST /api/auth/wallet/agent/token. The owner is `x402:<address>`.'
+x-service-info:
+  categories:
+  - monitoring
+  - cron
+  - devops
+  docs:
+    homepage: https://hookpulse.net/
+    apiReference: https://hookpulse.net/developers
+    llms: https://hookpulse.net/llms.txt

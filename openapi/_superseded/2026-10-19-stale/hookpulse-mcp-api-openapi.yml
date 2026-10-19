@@ -1,0 +1,33 @@
+openapi: 3.2.0
+info:
+  title: HookPulse MCP API
+  version: 2d690e87
+  description: 'Dead-man switch for webhooks/cron. Index: GET /api/.'
+servers:
+- url: https://hookpulse.net
+tags:
+- name: MCP
+paths:
+  /mcp:
+    post:
+      operationId: post_mcp
+      summary: MCP server over HTTP (Streamable HTTP, JSON-RPC 2.0) — plugs into the client…
+      description: 'The tools are the operations of this same catalog; the MCP has no backend of its own. `GET /mcp` returns the server card.
+
+        Returns: JSON-RPC 2.0 response (`initialize`, `tools/list` or `tools/call`).
+
+        Credentials go in the usual headers (X-Guest-Token, Authorization, X-PAYMENT) and are forwarded to the API.
+
+        An exhausted quota comes back as a 402 with accepts[] inside the tool result — pay and repeat.'
+      security: []
+      responses:
+        '200':
+          description: JSON-RPC 2.0 response (`initialize`, `tools/list` or `tools/call`).
+      tags:
+      - MCP
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A `sess_…` session also works.'

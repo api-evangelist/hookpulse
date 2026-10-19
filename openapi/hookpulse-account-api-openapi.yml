@@ -1,0 +1,298 @@
+openapi: 3.2.0
+info:
+  title: HookPulse Account API
+  version: 1d751aaf
+  description: Monitor scheduled tasks and receive alerts for missing check-ins. Read GET /api/ for the API index.
+servers:
+- url: https://hookpulse.net
+tags:
+- name: Account
+paths:
+  /api/account/profile:
+    get:
+      operationId: get_api_account_profile
+      summary: Read your global profile
+      description: 'Reads current preferences from the account. Edit them on your account page; products never own a separate profile.
+
+        Returns: {profile:{name,locale,timeZone,theme,revision}}'
+      security:
+      - globalAccount: []
+      responses:
+        '200':
+          description: '{profile:{name,locale,timeZone,theme,revision}}'
+        '401':
+          description: invalid_session
+        '503':
+          description: auth_unavailable
+      tags:
+      - Account
+  /api/account/avatar:
+    get:
+      operationId: get_api_account_avatar
+      summary: Read your global profile photo
+      description: 'Private WebP, up to 64 KiB, no cache. Change it on your account. No user ID or object URL accepted.
+
+        Returns: image/webp; Cache-Control: no-store'
+      security:
+      - globalAccount: []
+      responses:
+        '200':
+          description: 'image/webp; Cache-Control: no-store'
+          content:
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: invalid_session
+        '404':
+          description: 'not_found: no photo / sem foto'
+        '503':
+          description: auth_unavailable
+      tags:
+      - Account
+  /api/account/keys:
+    get:
+      operationId: get_api_account_keys
+      summary: List your API keys in this product
+      description: 'Never returns the key itself: name, last 4 characters, organization, creation, last use (hourly) and whether it still works.
+
+        Returns: { keys }'
+      security:
+      - globalAccount: []
+      responses:
+        '200':
+          description: '{ keys }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      type: object
+                    description: '`id`, `name`, `organizationId`, `last4`, `createdAt`, `lastUsedAt`, `revokedAt`, `active` (false when revoked or stopped by a password change / ending all sessions).'
+                required:
+                - keys
+        '401':
+          description: invalid_session
+        '503':
+          description: auth_unavailable
+      tags:
+      - Account
+  /api/account/keys/create:
+    post:
+      operationId: post_api_account_keys_create
+      summary: Create an API key for agents and scripts
+      description: 'Needs a sign-in in the last 5 minutes; an organization key also needs a second factor in the session and the owner/admin role with this product enabled. At most 10 live keys per account and product. The key (`secret`) is returned ONCE.
+
+        Returns: { key, secret }'
+      security:
+      - globalAccount: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Up to 60 characters.
+                organizationId:
+                  type:
+                  - string
+                  - 'null'
+                  description: '`null` for an account key.'
+              required:
+              - name
+              - organizationId
+            example:
+              name: agent
+              organizationId: null
+      responses:
+        '200':
+          description: '{ key, secret }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  key:
+                    type: object
+                    description: '`id`, `name`, `organizationId`, `last4`, `createdAt`.'
+                  secret:
+                    type: string
+                    description: '`mmk_…`, shown once.'
+                required:
+                - key
+                - secret
+        '400':
+          description: invalid_key_name / invalid_organization
+        '401':
+          description: invalid_session / reauth_required
+        '403':
+          description: invalid_origin / invalid_csrf / organization_forbidden / organization_mfa_required
+        '409':
+          description: key_limit_reached
+        '503':
+          description: auth_unavailable
+      tags:
+      - Account
+  /api/account/keys/revoke:
+    post:
+      operationId: post_api_account_keys_revoke
+      summary: Revoke one of your API keys
+      description: 'Stops the key at once. Repeating is harmless.
+
+        Returns: { ok }'
+      security:
+      - globalAccount: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  description: The key `id`.
+              required:
+              - id
+            example:
+              id: …
+      responses:
+        '200':
+          description: '{ ok }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    description: 'true'
+                required:
+                - ok
+        '400':
+          description: invalid_key_id
+        '401':
+          description: invalid_session
+        '403':
+          description: invalid_origin / invalid_csrf
+        '404':
+          description: key_not_found
+        '503':
+          description: auth_unavailable
+      tags:
+      - Account
+  /api/account/apps:
+    get:
+      operationId: get_api_account_apps
+      summary: List the apps connected to your account in this product
+      description: 'The MCP clients you signed in with (OAuth), such as claude.ai or ChatGPT. Never returns a token.
+
+        Returns: { apps }'
+      security:
+      - globalAccount: []
+      responses:
+        '200':
+          description: '{ apps }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  apps:
+                    type: array
+                    items:
+                      type: object
+                    description: 'Up to 50: `id`, `nome` (the app; its host when it identifies itself by a metadata document), `criadoEm`, `usadoEm` (hourly, or null).'
+                required:
+                - apps
+        '401':
+          description: invalid_session
+        '503':
+          description: auth_unavailable
+      tags:
+      - Account
+  /api/account/apps/revoke:
+    post:
+      operationId: post_api_account_apps_revoke
+      summary: Disconnect an app from your account
+      description: 'Stops the app''s access at once; it asks you to sign in again. Repeating is harmless.
+
+        Returns: { ok }'
+      security:
+      - globalAccount: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  description: The app `id`.
+              required:
+              - id
+            example:
+              id: …
+      responses:
+        '200':
+          description: '{ ok }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    description: 'true'
+                required:
+                - ok
+        '400':
+          description: invalid_app_id
+        '401':
+          description: invalid_session
+        '403':
+          description: invalid_origin / invalid_csrf
+        '404':
+          description: app_not_found
+        '503':
+          description: auth_unavailable
+      tags:
+      - Account
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A signed-in account (cookie) also works and takes precedence.'
+    globalAccount:
+      type: apiKey
+      in: cookie
+      name: __Host-mm-auth
+      description: Global session in the product's HttpOnly cookie; writes require exact Origin and X-CSRF-Token.
+    contaChaveApi:
+      type: http
+      scheme: bearer
+      bearerFormat: mmk_…
+      description: 'Account API key: `Authorization: Bearer mmk_…` or `X-Api-Key: mmk_…`. Created on the account page (API keys), valid only in the product where it was created; it acts as the account (or the organization that owns it).'
+    carteiraAgente:
+      type: http
+      scheme: bearer
+      bearerFormat: mmw_…
+      description: 'Wallet credential of an agent without an account (`Authorization: Bearer mmw_…`, 30 days, this product only): POST /api/auth/wallet/agent/start, sign the message with the wallet, POST /api/auth/wallet/agent/token. The owner is `x402:<address>`.'
+x-service-info:
+  categories:
+  - monitoring
+  - cron
+  - devops
+  docs:
+    homepage: https://hookpulse.net/
+    apiReference: https://hookpulse.net/developers
+    llms: https://hookpulse.net/llms.txt

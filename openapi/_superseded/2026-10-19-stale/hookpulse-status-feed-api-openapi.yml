@@ -1,0 +1,83 @@
+openapi: 3.2.0
+info:
+  title: HookPulse Status Feed API
+  version: 2d690e87
+  description: 'Dead-man switch for webhooks/cron. Index: GET /api/.'
+servers:
+- url: https://hookpulse.net
+tags:
+- name: Status Feed
+paths:
+  /api/status-feed:
+    get:
+      operationId: status_feed_url
+      summary: Returns (minting it the first time) the public status URL of all your monitors
+      description: 'The feed token only reads status: it does not create, change or delete. Whoever has the link sees the dashboard — treat it as a secret.
+
+        Returns: { token, rotated, json, rss, note, api_index }'
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: '{ token, rotated, json, rss, note, api_index }'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feed'
+        '401':
+          description: No credential, or an invalid one. See this endpoint's auth.
+      tags:
+      - Status Feed
+    delete:
+      operationId: status_feed_rotate
+      summary: 'Rotates the feed token: the previous URL stops working immediately'
+      description: 'Returns: { token, rotated, json, rss, note, api_index }'
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: '{ token, rotated, json, rss, note, api_index }'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feed'
+        '401':
+          description: No credential, or an invalid one. See this endpoint's auth.
+      tags:
+      - Status Feed
+components:
+  schemas:
+    Feed:
+      type: object
+      properties:
+        token:
+          type: string
+          description: 'Feed token. Read-only: it does not create, change or delete.'
+        rotated:
+          type: boolean
+          description: '`true` when this call rotated the token and invalidated the previous URL.'
+        json:
+          type: string
+          description: URL of the dashboard as JSON.
+        rss:
+          type: string
+          description: URL of the same dashboard as RSS 2.0.
+        note:
+          type: string
+          description: The warning that whoever has the link reads the dashboard.
+        api_index:
+          type: string
+          description: Self-describing API index.
+      required:
+      - token
+      - rotated
+      - json
+      - rss
+      - note
+      - api_index
+      description: The URLs of the owner's public dashboard, with the token just minted or rotated.
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A `sess_…` session also works.'

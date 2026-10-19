@@ -1,0 +1,93 @@
+openapi: 3.2.0
+info:
+  title: HookPulse In API
+  version: 2d690e87
+  description: 'Dead-man switch for webhooks/cron. Index: GET /api/.'
+servers:
+- url: https://hookpulse.net
+tags:
+- name: In
+paths:
+  /in/{id}:
+    get:
+      operationId: ping_ingest
+      summary: 'The ingest URL: this is where your cron or webhook proves it is alive'
+      description: 'No credential on purpose — the caller is a cron, and the ID is already the secret. It costs nothing and there is no quota per ping.
+
+        Returns: { ok }'
+      security: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: '{ ok }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    description: Always `true` when the ping was recorded.
+                required:
+                - ok
+        '404':
+          description: The monitor does not exist or is deactivated.
+      tags:
+      - In
+    post:
+      operationId: post_in_by_id
+      summary: The same ingest by POST, for whoever can only send webhooks
+      description: 'The body is optional and records `status` and `latency_ms` along with the ping.
+
+        Returns: { ok }'
+      security: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: integer
+                  description: Status of the job that is pinging, to show in `Ping.status`.
+                latency_ms:
+                  type: integer
+                  description: How long the job took, in ms.
+            example:
+              status: 200
+              latency_ms: 431
+      responses:
+        '200':
+          description: '{ ok }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    description: Always `true` when the ping was recorded.
+                required:
+                - ok
+        '404':
+          description: The monitor does not exist or is deactivated.
+      tags:
+      - In
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A `sess_…` session also works.'

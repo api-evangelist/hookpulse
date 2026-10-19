@@ -1,8 +1,8 @@
 openapi: 3.2.0
 info:
   title: HookPulse Contact API
-  version: 2d690e87
-  description: 'Dead-man switch for webhooks/cron. Index: GET /api/.'
+  version: 1d751aaf
+  description: Monitor scheduled tasks and receive alerts for missing check-ins. Read GET /api/ for the API index.
 servers:
 - url: https://hookpulse.net
 tags:
@@ -11,10 +11,10 @@ paths:
   /api/contact:
     post:
       operationId: contact
-      summary: 'Talks to support: a human solves Turnstile, an agent pays $0.10 in x402'
-      description: 'The first agent message is free; after that the backoff is 60s doubling up to a 1-hour cap, announced in `Retry-After`.
+      summary: Write to the people behind the product — free, for people and agents alike
+      description: 'One route for a question and for a sponsorship, partnership or ad proposal (`tipo`, with the placements of `GET /api/partners`). No captcha, no account, no payment. One message every 10 seconds per network: one that arrives sooner waits its turn and then goes out — no error. The message reaches the team by e-mail, with `email` as the reply address. For voice, send multipart/form-data: `dados` is this JSON (up to 32 KiB), and `audio` is one WebM, Ogg or M4A audio file (up to 2 MB). Audio can replace message. The browser records up to two minutes. Audio is attached to the owner''s e-mail.
 
-        Returns: { ok, path }'
+        Returns: { ok }'
       security: []
       requestBody:
         required: true
@@ -32,21 +32,66 @@ paths:
                 message:
                   type: string
                   description: What you want to say.
-                form_ts:
-                  type: integer
-                  description: When the form was opened; it is the anti-robot of the human path.
+                whatsapp:
+                  type: string
+                  description: Optional reply number with country code, such as +5561999999999.
+                prefer_whatsapp:
+                  type: boolean
+                  description: Request a WhatsApp reply. Requires whatsapp.
+                tipo:
+                  type: string
+                  description: 'Proposal: `patrocinio`, `parceria`, `anuncio` or `consultoria`. Turns on the fields below.'
+                empresa:
+                  type: string
+                  description: Who is proposing, when it is a company.
+                site:
+                  type: string
+                  description: Website of who is proposing.
+                orcamento:
+                  type: string
+                  description: 'Advertising: `ate_100`, `100_500`, `500_2000`, `2000_mais` or `a_combinar`. Consulting, in US dollars: `ate_2000`, `2000_5000`, `5000_10000`, `10000_mais` or `nao_sei`.'
+                espaco:
+                  type: array
+                  items:
+                    type: string
+                  description: Placement ids from `GET /api/partners`, up to 6.
+                duracao:
+                  type: string
+                  description: 'Exposure in days: `30`, `90` or `365`.'
+                pagamento:
+                  type: string
+                  description: '`usdc`, `deposito` or `a_combinar`.'
+                projeto:
+                  type: string
+                  description: 'Consulting: the kind of project (`llm_privado`, `voz`, `dados_sensiveis`, `gpu`, `integracao` or `outro`).'
+                prazo:
+                  type: string
+                  description: 'Consulting: when to start (`agora`, `1_mes`, `1_3_meses` or `explorando`).'
+                formato:
+                  type: string
+                  description: 'Consulting: `projeto` (per scope), `mensal` (monthly) or `assessoria` (advisory).'
+                pais:
+                  type: string
+                  description: 'Consulting: the country of the person asking.'
+                fuso:
+                  type: string
+                  description: 'Consulting: the IANA time zone, such as `America/New_York`.'
+                horarios:
+                  type: array
+                  items:
+                    type: string
+                  description: 'Consulting: up to 3 times for the call, `YYYY-MM-DDTHH:MM` in that time zone.'
               required:
               - name
               - email
               - message
             example:
-              name: …
-              email: a@example.com
-              message: …
-              form_ts: 0
+              name: Agent
+              email: agent@example.com
+              message: hello from an agent
       responses:
         '200':
-          description: '{ ok, path }'
+          description: '{ ok }'
           content:
             application/json:
               schema:
@@ -55,18 +100,12 @@ paths:
                   ok:
                     type: boolean
                     description: Always `true` when the message was accepted.
-                  path:
-                    type: string
-                    description: 'Which path it came through: human with captcha or paid agent.'
                 required:
                 - ok
-                - path
         '400':
-          description: Required field missing.
-        '402':
-          description: 'Quota exceeded. The response carries `accepts[]` (x402, USDC on Base): pay and repeat the same call with `X-PAYMENT`.'
-        '429':
-          description: 'Agent backoff: wait for `Retry-After`.'
+          description: 'Validation: `code` names the field.'
+        '503':
+          description: Contact is not configured on this server.
       tags:
       - Contact
 components:
@@ -74,4 +113,28 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
-      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A `sess_…` session also works.'
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A signed-in account (cookie) also works and takes precedence.'
+    globalAccount:
+      type: apiKey
+      in: cookie
+      name: __Host-mm-auth
+      description: Global session in the product's HttpOnly cookie; writes require exact Origin and X-CSRF-Token.
+    contaChaveApi:
+      type: http
+      scheme: bearer
+      bearerFormat: mmk_…
+      description: 'Account API key: `Authorization: Bearer mmk_…` or `X-Api-Key: mmk_…`. Created on the account page (API keys), valid only in the product where it was created; it acts as the account (or the organization that owns it).'
+    carteiraAgente:
+      type: http
+      scheme: bearer
+      bearerFormat: mmw_…
+      description: 'Wallet credential of an agent without an account (`Authorization: Bearer mmw_…`, 30 days, this product only): POST /api/auth/wallet/agent/start, sign the message with the wallet, POST /api/auth/wallet/agent/token. The owner is `x402:<address>`.'
+x-service-info:
+  categories:
+  - monitoring
+  - cron
+  - devops
+  docs:
+    homepage: https://hookpulse.net/
+    apiReference: https://hookpulse.net/developers
+    llms: https://hookpulse.net/llms.txt

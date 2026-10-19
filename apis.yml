@@ -404,6 +404,123 @@ apis:
     url: https://hookpulse.net/okf/index.md
   - type: Documentation
     url: https://hookpulse.net/.well-known/api-catalog
+- aid: hookpulse:hookpulse-account-api
+  name: HookPulse Account API
+  description: The Account API from HookPulse — 7 operation(s) for account.
+  humanURL: https://hookpulse.net/api/
+  tags:
+  - Account
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-account-api-openapi.yml
+- aid: hookpulse:hookpulse-agent-json-api
+  name: HookPulse Agent.json API
+  description: The Agent.json API from HookPulse — 1 operation(s) for agent.json.
+  humanURL: https://hookpulse.net/api/
+  tags:
+  - Agent.json
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-agent-json-api-openapi.yml
+- aid: hookpulse:hookpulse-erro-cliente-api
+  name: HookPulse Erro Cliente API
+  description: The Erro Cliente API from HookPulse — 1 operation(s) for erro cliente.
+  humanURL: https://hookpulse.net/api/
+  tags:
+  - Erro Cliente
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-erro-cliente-api-openapi.yml
+- aid: hookpulse:hookpulse-funil-api
+  name: HookPulse Funil API
+  description: The Funil API from HookPulse — 3 operation(s) for funil.
+  humanURL: https://hookpulse.net/api/
+  tags:
+  - Funil
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-funil-api-openapi.yml
+- aid: hookpulse:hookpulse-github-api
+  name: HookPulse GitHub API
+  description: The Github API from HookPulse — 2 operation(s) for github.
+  humanURL: https://hookpulse.net/api/
+  tags:
+  - Github
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-github-api-openapi.yml
+- aid: hookpulse:hookpulse-import-api
+  name: HookPulse Import API
+  description: The Import API from HookPulse — 1 operation(s) for import.
+  humanURL: https://hookpulse.net/api/
+  tags:
+  - Import
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-import-api-openapi.yml
+- aid: hookpulse:hookpulse-ingest-key-api
+  name: HookPulse Ingest Key API
+  description: The Ingest Key API from HookPulse — 1 operation(s) for ingest key.
+  humanURL: https://hookpulse.net/api/
+  tags:
+  - Ingest Key
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-ingest-key-api-openapi.yml
+- aid: hookpulse:hookpulse-pagamento-api
+  name: HookPulse Pagamento API
+  description: The Pagamento API from HookPulse — 1 operation(s) for pagamento.
+  humanURL: https://hookpulse.net/api/
+  tags:
+  - Pagamento
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-pagamento-api-openapi.yml
+- aid: hookpulse:hookpulse-partners-api
+  name: HookPulse Partners API
+  description: The Partners API from HookPulse — 1 operation(s) for partners.
+  humanURL: https://hookpulse.net/api/
+  tags:
+  - Partners
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-partners-api-openapi.yml
+- aid: hookpulse:hookpulse-plans-api
+  name: HookPulse Plans API
+  description: The Plans API from HookPulse — 4 operation(s) for plans.
+  humanURL: https://hookpulse.net/api/
+  tags:
+  - Plans
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-plans-api-openapi.yml
+- aid: hookpulse:hookpulse-pricing-api
+  name: HookPulse Pricing API
+  description: The Pricing API from HookPulse — 1 operation(s) for pricing.
+  humanURL: https://hookpulse.net/api/
+  tags:
+  - Pricing
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-pricing-api-openapi.yml
+- aid: hookpulse:hookpulse-sites-api
+  name: HookPulse Sites API
+  description: The Sites API from HookPulse — 1 operation(s) for sites.
+  humanURL: https://hookpulse.net/api/
+  tags:
+  - Sites
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-sites-api-openapi.yml
+- aid: hookpulse:hookpulse-vitrine-api
+  name: HookPulse Vitrine API
+  description: The Vitrine API from HookPulse — 4 operation(s) for vitrine.
+  humanURL: https://hookpulse.net/api/
+  tags:
+  - Vitrine
+  properties:
+  - type: OpenAPI
+    url: openapi/hookpulse-vitrine-api-openapi.yml
 maintainers:
 - FN: HookPulse
   url: https://hookpulse.net/

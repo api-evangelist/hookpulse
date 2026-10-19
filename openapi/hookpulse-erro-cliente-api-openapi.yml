@@ -1,0 +1,98 @@
+openapi: 3.2.0
+info:
+  title: HookPulse Erro Cliente API
+  version: 1d751aaf
+  description: Monitor scheduled tasks and receive alerts for missing check-ins. Read GET /api/ for the API index.
+servers:
+- url: https://hookpulse.net
+tags:
+- name: Erro Cliente
+paths:
+  /api/erro-cliente:
+    post:
+      operationId: post_api_erro_cliente
+      summary: Browser error report, sent by the interface itself. Agents need not call it
+      description: 'The interface reports on its own JS errors, unhandled rejections, scripts/CSS that failed to load and CSP blocks — once per session — and the app reports handled failures through `window.mmErro.relata`. The server validates the envelope, redacts credentials, e-mails and phone numbers, merges repeats of the same failure per minute and records an operational event; nothing is written to a database. It keeps no IP, cookie, query string or full User-Agent. Always answers 204, even for an invalid report.
+
+        Returns: 204 with no body, always — an invalid, repeated or over-cap report also gets 204.'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: Failure code, `UI-` + letters/digits (`UI-JS-001` global error, `UI-PROMESSA-001`, `UI-RECURSO-001`, `UI-CSP-001`, `UI-APP-001` app report).
+                phase:
+                  type: string
+                  description: 'Where it broke, lowercase: `global`, `promessa`, `script`, `load_list`…'
+                path:
+                  type: string
+                  description: Path of the open page, without query; numbers, hashes and tokens in it are kept as `:id`.
+                message:
+                  type: string
+                  description: Error message, up to 2000 characters.
+                stack:
+                  type: string
+                  description: Stack trace, up to 12000 characters.
+                source:
+                  type: string
+                  description: Originating script; only its path is kept.
+                line:
+                  type: integer
+                  description: Line in the originating script.
+                column:
+                  type: integer
+                  description: Column in the originating script.
+                visivel:
+                  type: boolean
+                  description: Whether the tab was visible when it broke.
+                build:
+                  type: string
+                  description: Build of the reporting page (its `<meta name="build">`), up to 64 letters, digits, `.`, `_` or `-`; it dates the failure.
+              required:
+              - code
+              - phase
+            example:
+              code: UI-APP-001
+              phase: carregar_lista
+              path: /
+              message: lista 500
+      responses:
+        '200':
+          description: 204 with no body, always — an invalid, repeated or over-cap report also gets 204.
+      tags:
+      - Erro Cliente
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A signed-in account (cookie) also works and takes precedence.'
+    globalAccount:
+      type: apiKey
+      in: cookie
+      name: __Host-mm-auth
+      description: Global session in the product's HttpOnly cookie; writes require exact Origin and X-CSRF-Token.
+    contaChaveApi:
+      type: http
+      scheme: bearer
+      bearerFormat: mmk_…
+      description: 'Account API key: `Authorization: Bearer mmk_…` or `X-Api-Key: mmk_…`. Created on the account page (API keys), valid only in the product where it was created; it acts as the account (or the organization that owns it).'
+    carteiraAgente:
+      type: http
+      scheme: bearer
+      bearerFormat: mmw_…
+      description: 'Wallet credential of an agent without an account (`Authorization: Bearer mmw_…`, 30 days, this product only): POST /api/auth/wallet/agent/start, sign the message with the wallet, POST /api/auth/wallet/agent/token. The owner is `x402:<address>`.'
+x-service-info:
+  categories:
+  - monitoring
+  - cron
+  - devops
+  docs:
+    homepage: https://hookpulse.net/
+    apiReference: https://hookpulse.net/developers
+    llms: https://hookpulse.net/llms.txt

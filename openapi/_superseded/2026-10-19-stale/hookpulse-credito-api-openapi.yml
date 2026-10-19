@@ -1,0 +1,101 @@
+openapi: 3.2.0
+info:
+  title: HookPulse Credito API
+  version: 2d690e87
+  description: 'Dead-man switch for webhooks/cron. Index: GET /api/.'
+servers:
+- url: https://hookpulse.net
+tags:
+- name: Credito
+paths:
+  /api/credito:
+    post:
+      operationId: post_api_credito
+      summary: 'Top up prepaid credit: pay once with x402 and get the token that debits on any…'
+      description: 'Returns: { token, saldo_usd, guarde, usar, saldo_em }'
+      security: []
+      parameters:
+      - name: usd
+        in: query
+        required: true
+        schema:
+          type: integer
+        description: 'Package: 1, 5, 10 ou 25 dollars.'
+      responses:
+        '200':
+          description: '{ token, saldo_usd, guarde, usar, saldo_em }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: Bearer token for the balance (`cred_…`). Shown ONCE — it cannot be recovered.
+                  saldo_usd:
+                    type: string
+                    description: Credited balance.
+                  guarde:
+                    type: string
+                    description: Warning that the token is the bearer of the credit.
+                  usar:
+                    type: string
+                    description: How to present the token on paid routes.
+                  saldo_em:
+                    type: string
+                    description: Where to check balance and statement.
+                required:
+                - token
+                - saldo_usd
+                - guarde
+                - usar
+                - saldo_em
+        '400':
+          description: Package outside the list (1, 5, 10 ou 25).
+        '402':
+          description: Unpaid — the body carries the x402 `accepts[]`.
+      tags:
+      - Credito
+    get:
+      operationId: get_api_credito
+      summary: Credit balance and statement — the latest movements, without returning the token
+      description: 'Returns: { saldo_micros, saldo_usd, criado_em, movimentos }'
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: '{ saldo_micros, saldo_usd, criado_em, movimentos }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  saldo_micros:
+                    type: integer
+                    description: Balance in micro-dollars (1e-6 USD).
+                  saldo_usd:
+                    type: string
+                    description: Formatted balance.
+                  criado_em:
+                    type: string
+                    description: When the credit was opened.
+                  movimentos:
+                    type: array
+                    items:
+                      type: object
+                    description: Recent credits and debits, with product and resource.
+                required:
+                - saldo_micros
+                - saldo_usd
+                - criado_em
+                - movimentos
+        '401':
+          description: No token, or unknown token.
+      tags:
+      - Credito
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A `sess_…` session also works.'

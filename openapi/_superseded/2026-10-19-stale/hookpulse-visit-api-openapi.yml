@@ -1,0 +1,61 @@
+openapi: 3.2.0
+info:
+  title: HookPulse Visit API
+  version: 2d690e87
+  description: 'Dead-man switch for webhooks/cron. Index: GET /api/.'
+servers:
+- url: https://hookpulse.net
+tags:
+- name: Visit
+paths:
+  /api/visit:
+    post:
+      operationId: post_api_visit
+      summary: Ping from the interface that increments the day's visits.
+      description: 'Smoke does not count: `X-MM-Smoke`, User-Agent `mm-smoke` or `smoke: true` in the body come in as `counted: false`.
+
+        Returns: { ok, counted, reason? }'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                p:
+                  type: string
+                  description: Path of the visited page.
+                smoke:
+                  type: boolean
+                  description: '`true` marks the call as a test and it does not enter the count.'
+            example:
+              p: /
+      responses:
+        '200':
+          description: '{ ok, counted, reason? }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    description: Always `true`.
+                  counted:
+                    type: boolean
+                    description: Whether the visit entered the day's count.
+                  reason:
+                    type: string
+                    description: Why it did not count, when `counted` is `false`.
+                required:
+                - ok
+                - counted
+      tags:
+      - Visit
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A `sess_…` session also works.'

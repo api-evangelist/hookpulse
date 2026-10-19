@@ -1,0 +1,70 @@
+openapi: 3.2.0
+info:
+  title: HookPulse Templates API
+  version: 2d690e87
+  description: 'Dead-man switch for webhooks/cron. Index: GET /api/.'
+servers:
+- url: https://hookpulse.net
+tags:
+- name: Templates
+paths:
+  /api/templates:
+    get:
+      operationId: list_templates
+      summary: Ingest snippets (curl, cron, n8n) and the exact JSON we POST on a miss
+      description: 'It exists so nobody guesses the alert format: the `miss_json` here is the same body that arrives at your `alert_url`.
+
+        Returns: { origin, templates{ingest_curl,ingest_cron,ingest_n8n,miss_json,miss_url_hint} }'
+      security: []
+      responses:
+        '200':
+          description: '{ origin, templates{ingest_curl,ingest_cron,ingest_n8n,miss_json,miss_url_hint} }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  origin:
+                    type: string
+                    description: Origin used to build the snippets.
+                  templates:
+                    allOf:
+                    - $ref: '#/components/schemas/Templates'
+                    description: The snippets and the alert body.
+                required:
+                - origin
+                - templates
+      tags:
+      - Templates
+components:
+  schemas:
+    Templates:
+      type: object
+      properties:
+        ingest_curl:
+          type: string
+          description: A `curl` that works as proof of life.
+        ingest_cron:
+          type: string
+          description: The equivalent crontab line.
+        ingest_n8n:
+          type: string
+          description: How to call the ingest from n8n.
+        miss_json:
+          type: string
+          description: The exact JSON we POST to `alert_url` when the silence becomes a miss.
+        miss_url_hint:
+          type: string
+          description: What works as `alert_url` — public HTTPS only.
+      required:
+      - ingest_curl
+      - ingest_cron
+      - ingest_n8n
+      - miss_json
+      - miss_url_hint
+      description: How to ping and what we send when it fails. It is what saves guessing the format.
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A `sess_…` session also works.'

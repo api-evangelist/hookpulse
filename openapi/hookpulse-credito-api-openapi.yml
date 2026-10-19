@@ -1,8 +1,8 @@
 openapi: 3.2.0
 info:
   title: HookPulse Credito API
-  version: 2d690e87
-  description: 'Dead-man switch for webhooks/cron. Index: GET /api/.'
+  version: 1d751aaf
+  description: Monitor scheduled tasks and receive alerts for missing check-ins. Read GET /api/ for the API index.
 servers:
 - url: https://hookpulse.net
 tags:
@@ -19,8 +19,8 @@ paths:
         in: query
         required: true
         schema:
-          type: integer
-        description: 'Package: 1, 5, 10 ou 25 dollars.'
+          type: number
+        description: 'Package: 0.1, 1, 5, 10 or 25 dollars.'
       responses:
         '200':
           description: '{ token, saldo_usd, guarde, usar, saldo_em }'
@@ -51,7 +51,7 @@ paths:
                 - usar
                 - saldo_em
         '400':
-          description: Package outside the list (1, 5, 10 ou 25).
+          description: Package outside the list (0.1, 1, 5, 10 or 25).
         '402':
           description: Unpaid — the body carries the x402 `accepts[]`.
       tags:
@@ -93,9 +93,402 @@ paths:
           description: No token, or unknown token.
       tags:
       - Credito
+  /api/credito/pix:
+    get:
+      operationId: get_api_credito_pix
+      summary: 'Credit by Pix (Brazil): the key, the fixed rate, the packs in reais and what…'
+      description: 'Returns: { chave, brl_por_usd, pacotes, comprovante, liberacao }'
+      security: []
+      responses:
+        '200':
+          description: '{ chave, brl_por_usd, pacotes, comprovante, liberacao }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chave:
+                    type: string
+                    description: The Pix key that receives the payment.
+                  brl_por_usd:
+                    type: number
+                    description: Fixed rate used for the packs.
+                  pacotes:
+                    type: array
+                    items:
+                      type: object
+                    description: 'The packs (3, 5, 10 or 25 dollars), each with `brl_centavos` and `copia_e_cola` (the Pix copy-and-paste code for the amount, the same text as the QR: the bank app comes with the amount filled in).'
+                  comprovante:
+                    type: object
+                    description: Accepted types (photo or PDF) and the maximum size, in bytes.
+                  liberacao:
+                    type: string
+                    description: '`manual`: the owner checks the Pix and releases it.'
+                required:
+                - chave
+                - brl_por_usd
+                - pacotes
+                - comprovante
+                - liberacao
+      tags:
+      - Credito
+    post:
+      operationId: post_api_credito_pix
+      summary: 'Request credit paid by Pix: multipart with `usd`, `comprovante` (photo or PDF…'
+      description: 'The credit code comes back in the response and works once the owner checks the Pix and releases it (by hand, usually the same day). `email` is required: it is how the owner reaches the person. Optional: `nome`, `pagina` (the page the request came from, up to 2,000 characters) and what the person was buying when the 402 came — `recurso` (up to 2,000), `descricao` (up to 300) and `preco_usd` (decimal, e.g. `0.50`); and `navegador_id` (a UUID that links the requests from the same browser). Everything that arrives is recorded with the request — the receipt included —, with the signed-in account (checked by the session cookie), the network and browser.
+
+        Returns: { id, estado, credito, estado_em }'
+      security: []
+      responses:
+        '200':
+          description: '{ id, estado, credito, estado_em }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: Request id, to follow it.
+                  estado:
+                    type: string
+                    description: '`pendente` until the decision.'
+                  credito:
+                    type: string
+                    description: The `cred_…` token, shown ONCE; it works after the release.
+                  estado_em:
+                    type: string
+                    description: Where to follow the request.
+                required:
+                - id
+                - estado
+                - credito
+                - estado_em
+        '400':
+          description: Pack outside the list (3, 5, 10 or 25), no receipt or no valid e-mail.
+        '413':
+          description: Receipt above 2 MB.
+        '415':
+          description: Receipt that is neither a photo (JPEG, PNG, WebP) nor a PDF.
+        '429':
+          description: This network already sent today's requests.
+        '502':
+          description: 'The e-mail to the owner did not go out: the request is recorded as `falhou`; send it again.'
+        '503':
+          description: Review queue full, or Pix not available in this app.
+      tags:
+      - Credito
+  /api/credito/pix/{id}:
+    get:
+      operationId: get_api_credito_pix_by_id
+      summary: 'Status of a Pix credit request: `pendente`, `liberado`, `recusado` or `falhou`'
+      description: 'Returns: { estado, usd, decidido_em }'
+      security: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Request id (32 hex).
+        example: 0123456789abcdef0123456789abcdef
+      responses:
+        '200':
+          description: '{ estado, usd, decidido_em }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  estado:
+                    type: string
+                    description: '`pendente`, `liberado`, `recusado` or `falhou` (the e-mail to the owner did not go out; send again).'
+                  usd:
+                    type: integer
+                    description: The requested pack.
+                  decidido_em:
+                    type: string
+                    description: When the owner decided, or `null`.
+                required:
+                - estado
+                - usd
+                - decidido_em
+        '404':
+          description: Unknown request.
+      tags:
+      - Credito
+  /api/credito/asaas/{id}/cancelar:
+    post:
+      operationId: post_api_credito_asaas_by_id_cancelar
+      summary: Cancels a pending charge when the payment dialog closes
+      description: 'Requires the `cancelamento` capability returned at creation. An older credit charge accepts its token in `credito`. The product and environment must match. This does not refund payments or remove records. 202 means cancellation is pending; the scheduled worker retries provider failures.
+
+        Returns: { id, estado }'
+      security: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Charge id (32 hex).
+        example: 0123456789abcdef0123456789abcdef
+      responses:
+        '200':
+          description: '{ id, estado }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: Charge id.
+                  estado:
+                    type: string
+                    description: '`cancelando`, `vencido`, or the confirmed final state.'
+                required:
+                - id
+                - estado
+        '404':
+          description: Invalid charge or capability, or a different product or environment.
+      tags:
+      - Credito
+  /api/credito/asaas:
+    get:
+      operationId: get_api_credito_asaas
+      summary: 'Automatic Pix: whether it is available in this app, the packs in reais and the…'
+      description: 'Returns: { disponivel, pacotes, exatos, saldo, precisa_documento }'
+      security: []
+      responses:
+        '200':
+          description: '{ disponivel, pacotes, exatos, saldo, precisa_documento }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  disponivel:
+                    type: object
+                    description: '`false` when the app has no Asaas configured (use the Pix with receipt).'
+                  pacotes:
+                    type: array
+                    items:
+                      type: object
+                    description: The credit packs (3, 5, 10 or 25 dollars), with `brl_centavos`.
+                  exatos:
+                    type: array
+                    items:
+                      type: object
+                    description: Prices declared by the app, with `usd` and `brl_centavos`. Amounts start at R$ 5.00 and cannot exceed R$ 10,000.
+                  saldo:
+                    type: object
+                    description: 'When the product sells a balance in reais: the range and whether the account can buy.'
+                  precisa_documento:
+                    type: object
+                    description: Whether the payer's CPF or CNPJ is still required.
+                required:
+                - disponivel
+                - pacotes
+                - exatos
+                - saldo
+                - precisa_documento
+      tags:
+      - Credito
+    post:
+      operationId: post_api_credito_asaas
+      summary: 'Creates a dynamic Pix: JSON with `oferta` (`pacote` with `usd`, or `saldo` with…'
+      description: 'The payment releases what was bought by itself: the pack becomes the `cred_…` token already in the response; the balance goes to the logged-in account''s organization. The first purchase needs `documento` (CPF or CNPJ, sent to the gateway and not stored here) and `nome`; `email`, `pagina` and `navegador_id` are optional. With `forma: "cartao_boleto"` the charge is open: the response brings `pagamento_em`, the gateway page where you pay by card, boleto or Pix (due in three days). With `forma: "cartao"` and `cartao` (`titular`, `numero`, `mes`, `ano`, `cvv`, `documento`, `email`, `cep`, `numero_endereco`, `telefone`), the charge is paid by card in the same request: 200 with `estado: "pago"`, 202 with `conferir` while the issuer reviews it, 422 when the card is declined; the card is not stored. Set `usd` to an amount from `pacotes` or `exatos` in the GET response. The server sets the amount in cents and rejects amounts that the app has not declared.
+
+        Returns: { id, credito, forma, pix, pagamento_em, estado, estado_em, cancelamento }'
+      security: []
+      responses:
+        '200':
+          description: '{ id, credito, forma, pix, pagamento_em, estado, estado_em, cancelamento }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: Charge id, to follow up.
+                  credito:
+                    type: string
+                    description: 'For a pack: the `cred_…` token, shown ONCE; valid when the payment arrives.'
+                  forma:
+                    type: string
+                    description: '`pix` (the default), `cartao` or `cartao_boleto`.'
+                  pix:
+                    type: object
+                    description: '`copia_e_cola`, `imagem` (PNG QR, data URI) and `expira_em`; `pix` form only.'
+                  pagamento_em:
+                    type: string
+                    description: 'In the `cartao_boleto` form: the gateway payment page.'
+                  estado:
+                    type: string
+                    description: 'In the `cartao` form: `pago`, or `pendente` with `conferir`.'
+                  estado_em:
+                    type: string
+                    description: Where to follow the payment.
+                  cancelamento:
+                    type: string
+                    description: Capability to cancel a pending Pix or boleto charge.
+                required:
+                - id
+                - credito
+                - forma
+                - pix
+                - pagamento_em
+                - estado
+                - estado_em
+                - cancelamento
+        '400':
+          description: Credit amount outside `pacotes` and `exatos`, amount out of range, invalid CPF/CNPJ, name or e-mail, invalid card data (`cartao_dados`, with the `campo`), or the gateway refused the payer (`pagador_recusado`, with the reason in `detalhe`).
+        '422':
+          description: Card declined (`cartao_recusado`, with the `campo` when the gateway says which); try another card with `POST /api/credito/asaas/:id/cartao`.
+        '429':
+          description: Limit of 3 attempts per minute or 10 per day, per account or network, or the card limit.
+        '502':
+          description: The gateway did not create the Pix; try again.
+        '503':
+          description: Automatic Pix unavailable in this app, the gateway is busy (`asaas_ocupado`, wait `retry_after_s`), or too many charges from people not signed in waiting for payment.
+      tags:
+      - Credito
+  /api/credito/asaas/{id}:
+    get:
+      operationId: get_api_credito_asaas_by_id
+      summary: 'State of an automatic Pix charge: `pendente`, `pago`, `vencido`, `estornado` or…'
+      description: 'Returns: { estado, pago_em }'
+      security: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Charge id (32 hex).
+        example: 0123456789abcdef0123456789abcdef
+      responses:
+        '200':
+          description: '{ estado, pago_em }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  estado:
+                    type: string
+                    description: '`pago` releases the pack token or the balance; a Pix paid after the due date counts.'
+                  pago_em:
+                    type: string
+                    description: When the payment was confirmed, or `null`.
+                required:
+                - estado
+                - pago_em
+        '404':
+          description: Unknown charge.
+      tags:
+      - Credito
+  /api/credito/asaas/{id}/cartao:
+    post:
+      operationId: post_api_credito_asaas_by_id_cartao
+      summary: 'Pays a card charge whose card was declined with another card: the same charge…'
+      description: 'JSON with the `cartao` (the same fields as `POST /api/credito/asaas`) and, without an account, the `navegador_id` that created the charge. Only a card charge waiting for payment, by whoever created it, and up to five attempts per charge.
+
+        Returns: { estado, estado_em }'
+      security: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Id da cobrança (32 hex).
+        example: 0123456789abcdef0123456789abcdef
+      responses:
+        '200':
+          description: '{ estado, estado_em }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  estado:
+                    type: string
+                    description: '`pago`, or `pendente` with `conferir` while the issuer reviews it.'
+                  estado_em:
+                    type: string
+                    description: Where to follow the payment.
+                required:
+                - estado
+                - estado_em
+        '400':
+          description: Invalid card data (`cartao_dados`, with the `campo`).
+        '404':
+          description: Unknown charge, someone else's charge, or not a card charge.
+        '409':
+          description: The charge expired or was closed; start the payment again.
+        '422':
+          description: Card declined (`cartao_recusado`).
+        '429':
+          description: Used up the card attempts for this charge or for today.
+      tags:
+      - Credito
+  /api/credito/asaas/saude:
+    get:
+      operationId: get_api_credito_asaas_saude
+      summary: 'Health of this app''s Pix and enabled subscriptions: failures and reasons for…'
+      description: 'Returns: { ativo, tarefas }'
+      security: []
+      responses:
+        '200':
+          description: '{ ativo, tarefas }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ativo:
+                    type: object
+                    description: '`false` when Asaas and subscriptions are disabled.'
+                  tarefas:
+                    type: array
+                    items:
+                      type: object
+                    description: Each problem has `id`, `falhando`, and `motivo`. Includes Pix and, when enabled, subscription recovery, queue, and budget. Does not call the provider.
+                required:
+                - ativo
+                - tarefas
+      tags:
+      - Credito
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
-      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A `sess_…` session also works.'
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A signed-in account (cookie) also works and takes precedence.'
+    globalAccount:
+      type: apiKey
+      in: cookie
+      name: __Host-mm-auth
+      description: Global session in the product's HttpOnly cookie; writes require exact Origin and X-CSRF-Token.
+    contaChaveApi:
+      type: http
+      scheme: bearer
+      bearerFormat: mmk_…
+      description: 'Account API key: `Authorization: Bearer mmk_…` or `X-Api-Key: mmk_…`. Created on the account page (API keys), valid only in the product where it was created; it acts as the account (or the organization that owns it).'
+    carteiraAgente:
+      type: http
+      scheme: bearer
+      bearerFormat: mmw_…
+      description: 'Wallet credential of an agent without an account (`Authorization: Bearer mmw_…`, 30 days, this product only): POST /api/auth/wallet/agent/start, sign the message with the wallet, POST /api/auth/wallet/agent/token. The owner is `x402:<address>`.'
+x-service-info:
+  categories:
+  - monitoring
+  - cron
+  - devops
+  docs:
+    homepage: https://hookpulse.net/
+    apiReference: https://hookpulse.net/developers
+    llms: https://hookpulse.net/llms.txt

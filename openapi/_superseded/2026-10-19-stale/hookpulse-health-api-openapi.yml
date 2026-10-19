@@ -1,0 +1,49 @@
+openapi: 3.2.0
+info:
+  title: HookPulse Health API
+  version: 2d690e87
+  description: 'Dead-man switch for webhooks/cron. Index: GET /api/.'
+servers:
+- url: https://hookpulse.net
+tags:
+- name: Health
+paths:
+  /api/health:
+    get:
+      operationId: health
+      summary: Liveness and the commit deployed right now — it is how the smoke waits for its…
+      description: 'Returns: { ok, app, build, ts }'
+      security: []
+      responses:
+        '200':
+          description: '{ ok, app, build, ts }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    description: Always `true` when the Worker answers.
+                  app:
+                    type: string
+                    description: Product name.
+                  build:
+                    type: string
+                    description: Deployed commit; CI passes the short SHA on deploy.
+                  ts:
+                    type: string
+                    description: Time of the response (UTC, ISO-8601).
+                required:
+                - ok
+                - app
+                - build
+                - ts
+      tags:
+      - Health
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A `sess_…` session also works.'

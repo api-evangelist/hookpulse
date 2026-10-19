@@ -1,0 +1,184 @@
+openapi: 3.2.0
+info:
+  title: HookPulse Funil API
+  version: 1d751aaf
+  description: Monitor scheduled tasks and receive alerts for missing check-ins. Read GET /api/ for the API index.
+servers:
+- url: https://hookpulse.net
+tags:
+- name: Funil
+paths:
+  /api/funil:
+    post:
+      operationId: post_api_funil
+      summary: The interface reports the steps of a visit (conversion funnel).
+      description: 'A same-origin batch sent by the page itself: page views, engagement, offer in view, buy click, payment window, payment sent or accepted. It keeps the browser''s random id, the path without query, the referring host and the utm tags; never IP, e-mail or account. It writes no database row: one line per batch in the day''s journal, with a cap. Declared robots and smoke tests are left out.
+
+        Returns: 202 with no body when stored; 204 when ignored. Always no-store.'
+      security: []
+      parameters:
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          type: string
+        description: The page origin, identical to this route's origin.
+      - name: Content-Type
+        in: header
+        required: true
+        schema:
+          type: string
+        description: '`application/json` or `text/plain`.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                v:
+                  type: number
+                  description: 'Batch version: `1`.'
+                vid:
+                  type: string
+                  description: This browser's random id (UUID v4).
+                sid:
+                  type: string
+                  description: Session id (30 idle minutes end it).
+                sn:
+                  type: number
+                  description: This browser's session number.
+                pv:
+                  type: string
+                  description: Page view id.
+                e:
+                  type: array
+                  items:
+                    type: object
+                  description: Up to 40 events `{ t, n, p? }` from the funnel vocabulary.
+              required:
+              - v
+              - vid
+              - sid
+              - sn
+              - pv
+              - e
+      responses:
+        '202':
+          description: 202 with no body when stored; 204 when ignored. Always no-store.
+      tags:
+      - Funil
+  /api/funil/arquivos:
+    get:
+      operationId: get_api_funil_arquivos
+      summary: 'Operator: the funnel journal days kept by this app, with the size of each'
+      description: 'Returns: { v, produto, teto, dias }'
+      security: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        schema:
+          type: string
+        description: '`Bearer <METRICS_TOKEN>`.'
+      responses:
+        '200':
+          description: '{ v, produto, teto, dias }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  v:
+                    type: number
+                    description: Stored batch version.
+                  produto:
+                    type: string
+                    description: The product.
+                  teto:
+                    type: object
+                    description: '`bytesDia` and `dias` kept.'
+                  dias:
+                    type: array
+                    items:
+                      type: object
+                    description: '`{ dia, bytes }`, oldest to today.'
+                required:
+                - v
+                - produto
+                - teto
+                - dias
+        '401':
+          description: Unauthorized
+        '503':
+          description: Not configured
+      tags:
+      - Funil
+  /api/funil/arquivo:
+    get:
+      operationId: get_api_funil_arquivo
+      summary: 'Operator: a slice of one funnel journal day, as NDJSON, from a byte offset'
+      description: 'Up to 4 MiB per response, cut at the last whole line. `X-MM-Funil-Proximo` says where to ask for the rest; `X-MM-Funil-Tamanho`, the day''s size now.
+
+        Returns: JSON lines, one per stored batch.'
+      security: []
+      parameters:
+      - name: dia
+        in: query
+        required: true
+        schema:
+          type: string
+        description: The day, `YYYY-MM-DD` (UTC).
+      - name: desde
+        in: query
+        required: false
+        schema:
+          type: number
+        description: The byte to read from; `0` at the start.
+      - name: Authorization
+        in: header
+        required: true
+        schema:
+          type: string
+        description: '`Bearer <METRICS_TOKEN>`.'
+      responses:
+        '200':
+          description: JSON lines, one per stored batch.
+        '400':
+          description: Invalid parameters
+        '401':
+          description: Unauthorized
+        '503':
+          description: Not configured
+      tags:
+      - Funil
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A signed-in account (cookie) also works and takes precedence.'
+    globalAccount:
+      type: apiKey
+      in: cookie
+      name: __Host-mm-auth
+      description: Global session in the product's HttpOnly cookie; writes require exact Origin and X-CSRF-Token.
+    contaChaveApi:
+      type: http
+      scheme: bearer
+      bearerFormat: mmk_…
+      description: 'Account API key: `Authorization: Bearer mmk_…` or `X-Api-Key: mmk_…`. Created on the account page (API keys), valid only in the product where it was created; it acts as the account (or the organization that owns it).'
+    carteiraAgente:
+      type: http
+      scheme: bearer
+      bearerFormat: mmw_…
+      description: 'Wallet credential of an agent without an account (`Authorization: Bearer mmw_…`, 30 days, this product only): POST /api/auth/wallet/agent/start, sign the message with the wallet, POST /api/auth/wallet/agent/token. The owner is `x402:<address>`.'
+x-service-info:
+  categories:
+  - monitoring
+  - cron
+  - devops
+  docs:
+    homepage: https://hookpulse.net/
+    apiReference: https://hookpulse.net/developers
+    llms: https://hookpulse.net/llms.txt

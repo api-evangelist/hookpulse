@@ -1,0 +1,120 @@
+openapi: 3.2.0
+info:
+  title: HookPulse Import API
+  version: 1d751aaf
+  description: Monitor scheduled tasks and receive alerts for missing check-ins. Read GET /api/ for the API index.
+servers:
+- url: https://hookpulse.net
+tags:
+- name: Import
+paths:
+  /api/import/crontab:
+    post:
+      operationId: import_crontab
+      summary: Paste a `crontab -l` and get one monitor per scheduled line
+      description: 'The body is the crontab itself, as `text/plain`. Without `?apply=1` **nothing is written**: you get the proposal — what would become a monitor, what was ignored and why, and what still fits in the free tier. With `apply=1` it is all or nothing, under the same rules as `POST /api/endpoints`. Comments, variables and `@reboot` are ignored (there is no way to know when to expect a reboot); `@daily` and friends become the equivalent expression. The command becomes the monitor name, with passwords and tokens redacted first — the name travels in the alert e-mail, in the public dashboard and in the badge.
+
+        Returns: { applied, recognized, ignored, existing, would_create, created?, free_tier }'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: apply
+        in: query
+        required: false
+        schema:
+          type: string
+        description: '`1` creates the monitors; anything else only proposes.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                crontab:
+                  type: string
+                  description: The crontab itself, sent as the raw `text/plain` body (not JSON) — the output of `crontab -l`.
+              required:
+              - crontab
+      responses:
+        '200':
+          description: '{ applied, recognized, ignored, existing, would_create, created?, free_tier }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  applied:
+                    type: boolean
+                    description: '`false` on a proposal, `true` when the monitors were created.'
+                  recognized:
+                    type: array
+                    items:
+                      type: object
+                    description: Line, cron expression, name and command of each schedule read.
+                  ignored:
+                    type: array
+                    items:
+                      type: object
+                    description: Line, reason (`comentario`, `variavel`, `reboot`, `cron_invalido`, `nao_reconhecida`) and the text.
+                  existing:
+                    type: array
+                    items:
+                      type: object
+                    description: Lines whose monitor you already have — they are not created again.
+                  would_create:
+                    type: integer
+                    description: How many monitors the import would create.
+                  created:
+                    type: array
+                    items:
+                      type: object
+                    description: 'With `apply=1`: id, name and ingest URL of each monitor created.'
+                  free_tier:
+                    type: object
+                    description: Allowance and prices, to decide before applying.
+                required:
+                - applied
+                - recognized
+                - ignored
+                - existing
+                - would_create
+                - free_tier
+        '400':
+          description: '`crontab_sem_agenda` — no schedule line was recognised.'
+        '401':
+          description: No credential, or an invalid one. See this endpoint's auth.
+        '402':
+          description: 'Payment required. The x402 terms (USDC on Base) come in the `PAYMENT-REQUIRED` header and in `accepts[]`: pay and repeat the same call with `PAYMENT-SIGNATURE` (x402 v2) or `X-PAYMENT` (v1). A standard x402 client such as `@x402/fetch` does this for you.'
+      tags:
+      - Import
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A signed-in account (cookie) also works and takes precedence.'
+    globalAccount:
+      type: apiKey
+      in: cookie
+      name: __Host-mm-auth
+      description: Global session in the product's HttpOnly cookie; writes require exact Origin and X-CSRF-Token.
+    contaChaveApi:
+      type: http
+      scheme: bearer
+      bearerFormat: mmk_…
+      description: 'Account API key: `Authorization: Bearer mmk_…` or `X-Api-Key: mmk_…`. Created on the account page (API keys), valid only in the product where it was created; it acts as the account (or the organization that owns it).'
+    carteiraAgente:
+      type: http
+      scheme: bearer
+      bearerFormat: mmw_…
+      description: 'Wallet credential of an agent without an account (`Authorization: Bearer mmw_…`, 30 days, this product only): POST /api/auth/wallet/agent/start, sign the message with the wallet, POST /api/auth/wallet/agent/token. The owner is `x402:<address>`.'
+x-service-info:
+  categories:
+  - monitoring
+  - cron
+  - devops
+  docs:
+    homepage: https://hookpulse.net/
+    apiReference: https://hookpulse.net/developers
+    llms: https://hookpulse.net/llms.txt

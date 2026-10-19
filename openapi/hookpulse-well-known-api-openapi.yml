@@ -1,8 +1,8 @@
 openapi: 3.2.0
 info:
   title: HookPulse .well Known API
-  version: 2d690e87
-  description: 'Dead-man switch for webhooks/cron. Index: GET /api/.'
+  version: 1d751aaf
+  description: Monitor scheduled tasks and receive alerts for missing check-ins. Read GET /api/ for the API index.
 servers:
 - url: https://hookpulse.net
 tags:
@@ -12,7 +12,7 @@ paths:
     get:
       operationId: get_well_known_by_arquivo
       summary: 'Machine discovery before the home page: `api-catalog` (RFC 9727, a linkset with…'
-      description: 'Returns: `application/linkset+json` for the api-catalog; `text/plain` for the other two.'
+      description: 'Returns: `application/linkset+json` for the api-catalog; `application/json` for x402 and apis.json; `text/plain` for the other two.'
       security: []
       parameters:
       - name: arquivo
@@ -20,11 +20,13 @@ paths:
         required: true
         schema:
           type: string
+        description: '`api-catalog`, `security.txt`, `x402`, `mcp-registry-auth` or `apis.json`.'
+        example: api-catalog
       responses:
         '200':
-          description: '`application/linkset+json` for the api-catalog; `text/plain` for the other two.'
+          description: '`application/linkset+json` for the api-catalog; `application/json` for x402 and apis.json; `text/plain` for the other two.'
         '404':
-          description: Name outside the four published.
+          description: Name outside the five published.
       tags:
       - .well Known
 components:
@@ -32,4 +34,28 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
-      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A `sess_…` session also works.'
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A signed-in account (cookie) also works and takes precedence.'
+    globalAccount:
+      type: apiKey
+      in: cookie
+      name: __Host-mm-auth
+      description: Global session in the product's HttpOnly cookie; writes require exact Origin and X-CSRF-Token.
+    contaChaveApi:
+      type: http
+      scheme: bearer
+      bearerFormat: mmk_…
+      description: 'Account API key: `Authorization: Bearer mmk_…` or `X-Api-Key: mmk_…`. Created on the account page (API keys), valid only in the product where it was created; it acts as the account (or the organization that owns it).'
+    carteiraAgente:
+      type: http
+      scheme: bearer
+      bearerFormat: mmw_…
+      description: 'Wallet credential of an agent without an account (`Authorization: Bearer mmw_…`, 30 days, this product only): POST /api/auth/wallet/agent/start, sign the message with the wallet, POST /api/auth/wallet/agent/token. The owner is `x402:<address>`.'
+x-service-info:
+  categories:
+  - monitoring
+  - cron
+  - devops
+  docs:
+    homepage: https://hookpulse.net/
+    apiReference: https://hookpulse.net/developers
+    llms: https://hookpulse.net/llms.txt

@@ -1,0 +1,253 @@
+openapi: 3.2.0
+info:
+  title: HookPulse GitHub API
+  version: 1d751aaf
+  description: Monitor scheduled tasks and receive alerts for missing check-ins. Read GET /api/ for the API index.
+servers:
+- url: https://hookpulse.net
+tags:
+- name: Github
+paths:
+  /api/github/runs:
+    post:
+      operationId: post_api_github_runs
+      summary: 'The GitHub Action''s check-in: a scheduled workflow job reports how it ended…'
+      description: 'The last step of a job with `permissions: id-token: write` calls it (the `wrpbr/hookpulse-action` action does). The GitHub OIDC token proves the repository and the workflow. The first report creates the monitor `owner/repo/file.yml#job` with the cron that fired the run (`github.event.schedule`, UTC) and one hour of grace: GitHub delays scheduled runs under load, and the report arrives at the end of the job. Without `X-Ingest-Key` the repository owns the monitor, inside the free tier per repository, and a miss only goes to `alert_url`. With the key, its owner owns the monitor under the rules of `POST /api/endpoints` (402 past the free tier), gets e-mail alerts, and takes over the monitor the repository had created. The answer never carries the monitor ID: a public repository''s log is public.
+
+        Returns: { ok, kind?, ignored?, event_id?, received_at?, created, owner, monitor{name,state,cron,grace_sec,next_expected_at,alert,status_page?,badge?,dashboard?} }'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        schema:
+          type: string
+        description: '`Bearer <GitHub OIDC token>`, requested with this site''s origin as the audience.'
+      - name: X-Ingest-Key
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Optional ingest key (`hpk_…`, from `GET /api/ingest-key`), kept as a repository secret.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  description: 'How the job ended. `cancelled` and `skipped` record nothing: a cancelled run is not an outage.'
+                  enum:
+                  - success
+                  - failure
+                  - start
+                  - cancelled
+                  - skipped
+                job:
+                  type: string
+                  description: 'The job id (`GITHUB_JOB`): `[A-Za-z0-9_.-]`, up to 64 characters.'
+                schedule:
+                  type: string
+                  description: The cron that fired the run (`github.event.schedule`). Needed to create the monitor, unless `interval_sec` comes.
+                grace_sec:
+                  type: integer
+                  description: Tolerance after each scheduled time, 60 to 86400 seconds.
+                interval_sec:
+                  type: integer
+                  description: Tolerated silence of a job without a schedule, 60 to 86400 seconds.
+                exit_code:
+                  type: integer
+                  description: Exit status of the failed step, 0 to 255.
+                alert_url:
+                  type: string
+                  description: Public HTTPS URL we POST on a miss (Slack, Discord or any webhook).
+              required:
+              - status
+            example:
+              status: success
+              job: backup
+              schedule: 17 3 * * *
+      responses:
+        '200':
+          description: '{ ok, kind?, ignored?, event_id?, received_at?, created, owner, monitor{name,state,cron,grace_sec,next_expected_at,alert,status_page?,badge?,dashboard?} }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    description: '`true` when the report was recorded or deliberately ignored.'
+                  kind:
+                    type: string
+                    description: 'The signal recorded: `ping`, `fail` or `start`.'
+                  ignored:
+                    type: string
+                    description: The status that records nothing (`cancelled`, `skipped`).
+                  event_id:
+                    type: string
+                    description: The event recorded.
+                  received_at:
+                    type: string
+                    description: When it was recorded (UTC).
+                  created:
+                    type: boolean
+                    description: '`true` only on the report that created the monitor.'
+                  owner:
+                    type: string
+                    description: '`repository` (no key) or `ingest_key`.'
+                  monitor:
+                    allOf:
+                    - $ref: '#/components/schemas/MonitorGithub'
+                    description: The monitor, without its ID.
+                required:
+                - ok
+                - created
+                - owner
+                - monitor
+        '400':
+          description: Invalid body (`status_invalido`, `cron_invalido`, `schedule_required`…) or `alert_url` that is not public HTTPS.
+        '401':
+          description: No GitHub OIDC token, a token for another audience or an expired one (`invalid_github_token`), or an unknown ingest key.
+        '402':
+          description: 'With the key: past the free tier of its owner — pay and repeat.'
+        '429':
+          description: '`monitor_limit` — without a key, the repository''s free tier is full.'
+      tags:
+      - Github
+  /api/github/app/webhook:
+    post:
+      operationId: post_api_github_app_webhook
+      summary: 'The HookPulse GitHub App''s webhook: scheduled workflow runs of the repositories…'
+      description: 'Only GitHub calls it. A finished `workflow_run` from `schedule` records the run: the first one creates the monitor `owner/repo/file.yml` with the cron read from the workflow file, in UTC with one hour of grace; success proves life and a failure becomes an alert. Each run reads the workflow file again, so an edited cron reaches the monitor. Other events answer 200 and record nothing. A missed or failed run opens an issue labelled `hookpulse` in the repository, and the next success closes it. Before the first missed-run issue, the App reads the file on the default branch: a changed cron only updates the schedule. The repository owns the monitor, inside the free tier per repository.
+
+        Returns: { ok, recorded?, ignored? }'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: X-Hub-Signature-256
+        in: header
+        required: true
+        schema:
+          type: string
+        description: '`sha256=` HMAC of the raw body with the App''s webhook secret.'
+      - name: X-GitHub-Event
+        in: header
+        required: true
+        schema:
+          type: string
+        description: The event name; only `workflow_run` records.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                workflow_run:
+                  type: object
+                  description: 'GitHub''s `workflow_run` payload: `event`, `path`, `conclusion`, `head_sha`.'
+      responses:
+        '200':
+          description: '{ ok, recorded?, ignored? }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    description: '`true` when the delivery was accepted.'
+                  recorded:
+                    type: string
+                    description: 'The signal recorded: `ping` or `fail`.'
+                  ignored:
+                    type: string
+                    description: Why nothing was recorded.
+                required:
+                - ok
+        '400':
+          description: The body is not JSON.
+        '401':
+          description: '`invalid_signature`: the HMAC does not match the App''s secret.'
+        '413':
+          description: The body is over 512 KB.
+        '503':
+          description: '`github_app_not_configured`: this environment has no App credentials.'
+      tags:
+      - Github
+components:
+  schemas:
+    MonitorGithub:
+      type: object
+      properties:
+        name:
+          type: string
+          description: '`owner/repo/workflow.yml#job`, up to 80 characters.'
+        state:
+          type: string
+          description: 'One word for the state: `ok`, `waiting`, `late`, `paused` or `inactive`.'
+        cron:
+          type: string
+          description: The schedule the monitor expects, in UTC.
+          nullable: true
+        grace_sec:
+          type: integer
+          description: Tolerance after each scheduled time.
+          nullable: true
+        next_expected_at:
+          type: string
+          description: Deadline of the next run, before the grace (UTC).
+          nullable: true
+        alert:
+          type: string
+          description: 'Where a miss goes: `url` (the `alert_url`), `account_email` (the verified e-mail of the key''s account) or `none`.'
+        status_page:
+          type: string
+          description: Public read-only status page of the repository's monitors. Only when the repository owns the monitor.
+        badge:
+          type: string
+          description: SVG badge of this monitor for the README. Same condition.
+        dashboard:
+          type: string
+          description: Where the key's owner manages the monitor. Only with `X-Ingest-Key`.
+      required:
+      - name
+      - state
+      - cron
+      - grace_sec
+      - next_expected_at
+      - alert
+      description: 'The monitor of a GitHub Actions job, as the Action shows it in the job summary. It never carries the monitor ID: whoever has the ID pings it and silences the alarm, and a public repository''s log is public.'
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A signed-in account (cookie) also works and takes precedence.'
+    globalAccount:
+      type: apiKey
+      in: cookie
+      name: __Host-mm-auth
+      description: Global session in the product's HttpOnly cookie; writes require exact Origin and X-CSRF-Token.
+    contaChaveApi:
+      type: http
+      scheme: bearer
+      bearerFormat: mmk_…
+      description: 'Account API key: `Authorization: Bearer mmk_…` or `X-Api-Key: mmk_…`. Created on the account page (API keys), valid only in the product where it was created; it acts as the account (or the organization that owns it).'
+    carteiraAgente:
+      type: http
+      scheme: bearer
+      bearerFormat: mmw_…
+      description: 'Wallet credential of an agent without an account (`Authorization: Bearer mmw_…`, 30 days, this product only): POST /api/auth/wallet/agent/start, sign the message with the wallet, POST /api/auth/wallet/agent/token. The owner is `x402:<address>`.'
+x-service-info:
+  categories:
+  - monitoring
+  - cron
+  - devops
+  docs:
+    homepage: https://hookpulse.net/
+    apiReference: https://hookpulse.net/developers
+    llms: https://hookpulse.net/llms.txt

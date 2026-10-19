@@ -1,0 +1,39 @@
+openapi: 3.2.0
+info:
+  title: HookPulse Guest API
+  version: 2d690e87
+  description: 'Dead-man switch for webhooks/cron. Index: GET /api/.'
+servers:
+- url: https://hookpulse.net
+tags:
+- name: Guest
+paths:
+  /api/guest:
+    post:
+      operationId: create_guest
+      summary: Creates a guest `hp_…` — it is the anonymous owner of your monitors
+      description: 'Keep the token: without it there is no way back to the monitors, unless you have already tied them to an e-mail.
+
+        Returns: { token }'
+      security: []
+      responses:
+        '200':
+          description: '{ token }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: The guest, prefix `hp_`. Send it in `X-Guest-Token` or as Bearer.
+                required:
+                - token
+      tags:
+      - Guest
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A `sess_…` session also works.'

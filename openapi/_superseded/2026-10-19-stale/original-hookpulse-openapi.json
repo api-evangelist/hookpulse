@@ -1,0 +1,2096 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "HookPulse",
+    "version": "2d690e87",
+    "description": "Dead-man switch for webhooks/cron. Index: GET /api/."
+  },
+  "servers": [
+    {
+      "url": "https://hookpulse.net"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A `sess_…` session also works."
+      }
+    },
+    "schemas": {
+      "Monitor": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Monitor ID; it is the `:id` of the ingest URL."
+          },
+          "name": {
+            "type": "string",
+            "description": "Name you gave it, to recognise it in the alert."
+          },
+          "interval_sec": {
+            "type": "integer",
+            "description": "Tolerated silence, in seconds. Past that, it is a miss."
+          },
+          "alert_to": {
+            "type": "string",
+            "description": "E-mail alerted on a miss.",
+            "nullable": true
+          },
+          "alert_url": {
+            "type": "string",
+            "description": "HTTPS URL that receives a POST on a miss (Slack, Discord, n8n).",
+            "nullable": true
+          },
+          "last_event_at": {
+            "type": "string",
+            "description": "Last ping received (UTC); `null` while it never pinged.",
+            "nullable": true
+          },
+          "last_status": {
+            "type": "integer",
+            "description": "HTTP status the last ping sent, when it did.",
+            "nullable": true
+          },
+          "last_latency_ms": {
+            "type": "integer",
+            "description": "Latency reported in the last ping, in ms.",
+            "nullable": true
+          },
+          "miss_count": {
+            "type": "integer",
+            "description": "How many times this monitor has gone silent."
+          },
+          "alerted_at": {
+            "type": "string",
+            "description": "When the last alert went out — it is what holds the 1 alert/24h cap.",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Whether the monitor is on."
+          },
+          "healthy": {
+            "type": "boolean",
+            "description": "`true` when it has pinged at least once and is not overdue."
+          },
+          "overdue": {
+            "type": "boolean",
+            "description": "`true` when the silence passed `interval_sec`."
+          },
+          "waiting_first_ping": {
+            "type": "boolean",
+            "description": "`true` while it never pinged. Neither healthy nor overdue: nobody has wired it yet."
+          },
+          "created_at": {
+            "type": "string",
+            "description": "When the monitor was created (UTC)."
+          },
+          "ingest_url": {
+            "type": "string",
+            "description": "The URL your cron/webhook calls to prove life."
+          },
+          "token": {
+            "type": "string",
+            "description": "Read token of this monitor. Only comes on creation and to the owner."
+          },
+          "status_url": {
+            "type": "string",
+            "description": "Status of this monitor with the token already in the query."
+          },
+          "events_url": {
+            "type": "string",
+            "description": "Latest pings with the token already in the query."
+          },
+          "curl_example": {
+            "type": "string",
+            "description": "The ingest `curl`, ready to paste in the cron."
+          },
+          "templates": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Templates"
+              }
+            ],
+            "description": "Ingest snippets and the alert body, with this monitor already in them."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "interval_sec",
+          "alert_to",
+          "alert_url",
+          "last_event_at",
+          "last_status",
+          "last_latency_ms",
+          "miss_count",
+          "alerted_at",
+          "active",
+          "healthy",
+          "overdue",
+          "waiting_first_ping",
+          "created_at",
+          "ingest_url"
+        ],
+        "description": "A dead-man switch: the thing you make ping. If the ping stops for longer than `interval_sec`, it becomes `overdue` and the alert goes out."
+      },
+      "Templates": {
+        "type": "object",
+        "properties": {
+          "ingest_curl": {
+            "type": "string",
+            "description": "A `curl` that works as proof of life."
+          },
+          "ingest_cron": {
+            "type": "string",
+            "description": "The equivalent crontab line."
+          },
+          "ingest_n8n": {
+            "type": "string",
+            "description": "How to call the ingest from n8n."
+          },
+          "miss_json": {
+            "type": "string",
+            "description": "The exact JSON we POST to `alert_url` when the silence becomes a miss."
+          },
+          "miss_url_hint": {
+            "type": "string",
+            "description": "What works as `alert_url` — public HTTPS only."
+          }
+        },
+        "required": [
+          "ingest_curl",
+          "ingest_cron",
+          "ingest_n8n",
+          "miss_json",
+          "miss_url_hint"
+        ],
+        "description": "How to ping and what we send when it fails. It is what saves guessing the format."
+      },
+      "Billing": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "description": "Always `x402` — the only billing protocol accepted."
+          },
+          "mode": {
+            "type": "string",
+            "description": "Seller mode: `live` charges for real, `dev` lets calls through unpaid."
+          },
+          "network": {
+            "type": "string",
+            "description": "USDC network: `base` in production, `base-sepolia` in staging."
+          },
+          "chain_id": {
+            "type": "integer",
+            "description": "EVM chain ID of the network above, so the wallet signs on the right chain."
+          },
+          "pay_to": {
+            "type": "string",
+            "description": "Address that receives the payment.",
+            "nullable": true
+          },
+          "homolog": {
+            "type": "boolean",
+            "description": "Staging seam on: the loop can be closed without spending USDC."
+          },
+          "dev": {
+            "type": "boolean",
+            "description": "Development mode: the 402 is simulated."
+          },
+          "dev_gate": {
+            "type": "string",
+            "description": "How dev mode is unlocked, when it exists.",
+            "nullable": true
+          },
+          "facilitator": {
+            "type": "string",
+            "description": "URL of the facilitator that verifies and settles the payment."
+          },
+          "asset": {
+            "type": "string",
+            "description": "Accepted currency — always `USDC`."
+          },
+          "asset_address": {
+            "type": "string",
+            "description": "USDC contract on the network above."
+          },
+          "faucet": {
+            "type": "string",
+            "description": "Test-USDC faucet; only on base-sepolia.",
+            "nullable": true
+          },
+          "wallets": {
+            "type": "object",
+            "description": "Links to wallets that speak x402 (metamask, coinbase, base_app)."
+          },
+          "product": {
+            "type": "string",
+            "description": "Name of the product charging."
+          },
+          "free_max_endpoints": {
+            "type": "integer",
+            "description": "Free monitors per owner."
+          },
+          "free_min_interval_sec": {
+            "type": "integer",
+            "description": "Shortest interval that is still free. Below it, it costs."
+          },
+          "free_email_alerts": {
+            "type": "integer",
+            "description": "Free e-mail alert registrations; the rest is paid (it is SES cost per miss)."
+          },
+          "prices": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Precos"
+              }
+            ],
+            "description": "What each paid action costs, in USD."
+          },
+          "usage": {
+            "type": "object",
+            "description": "How much of the allowance the owner has used."
+          },
+          "trial": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Trial"
+              }
+            ],
+            "description": "The account's trial, when there is a session."
+          }
+        },
+        "required": [
+          "provider",
+          "mode",
+          "network",
+          "chain_id",
+          "pay_to",
+          "homolog",
+          "dev",
+          "dev_gate",
+          "facilitator",
+          "asset",
+          "asset_address",
+          "faucet",
+          "wallets",
+          "product",
+          "free_max_endpoints",
+          "free_min_interval_sec",
+          "free_email_alerts",
+          "prices",
+          "usage",
+          "trial"
+        ],
+        "description": "Everything that decides whether the next call will cost: x402 configuration, allowance, prices and trial."
+      },
+      "Precos": {
+        "type": "object",
+        "properties": {
+          "extra_endpoint_usd": {
+            "type": "number",
+            "description": "Monitor beyond the allowance."
+          },
+          "fast_interval_usd": {
+            "type": "number",
+            "description": "Interval below the free minimum."
+          },
+          "email_alert_usd": {
+            "type": "number",
+            "description": "E-mail alert registration beyond the first."
+          },
+          "contact_agent_usd": {
+            "type": "number",
+            "description": "Agent contact."
+          }
+        },
+        "required": [
+          "extra_endpoint_usd",
+          "fast_interval_usd",
+          "email_alert_usd",
+          "contact_agent_usd"
+        ],
+        "description": "Prices in force, in dollars. Read them here, not from the documentation."
+      },
+      "Trial": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "integer",
+            "description": "Trial length in days."
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Whether it is in force now."
+          },
+          "days_left": {
+            "type": "integer",
+            "description": "How many days remain."
+          },
+          "ends_at": {
+            "type": "string",
+            "description": "When it ends (UTC).",
+            "nullable": true
+          },
+          "granted": {
+            "type": "boolean",
+            "description": "`true` when THIS call granted the trial."
+          }
+        },
+        "required": [
+          "days",
+          "active",
+          "ends_at"
+        ],
+        "description": "The period without the usage paywall that confirming the e-mail grants. It is the alternative to paying."
+      },
+      "Ok": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "description": "Always `true` — failure comes as a 4xx/5xx status, not as `ok:false`."
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "description": "Write confirmation with no body of its own to return."
+      },
+      "Ping": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "description": "When it arrived (UTC)."
+          },
+          "status": {
+            "type": "integer",
+            "description": "Status reported by the caller, when it did.",
+            "nullable": true
+          },
+          "latency_ms": {
+            "type": "integer",
+            "description": "Latency reported by the caller, in ms.",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "description": "Where it came from: `get` or `post`.",
+            "nullable": true
+          }
+        },
+        "required": [
+          "at",
+          "status",
+          "latency_ms",
+          "source"
+        ],
+        "description": "A ping received at the ingest — the proof of life."
+      },
+      "Feed": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Feed token. Read-only: it does not create, change or delete."
+          },
+          "rotated": {
+            "type": "boolean",
+            "description": "`true` when this call rotated the token and invalidated the previous URL."
+          },
+          "json": {
+            "type": "string",
+            "description": "URL of the dashboard as JSON."
+          },
+          "rss": {
+            "type": "string",
+            "description": "URL of the same dashboard as RSS 2.0."
+          },
+          "note": {
+            "type": "string",
+            "description": "The warning that whoever has the link reads the dashboard."
+          },
+          "api_index": {
+            "type": "string",
+            "description": "Self-describing API index."
+          }
+        },
+        "required": [
+          "token",
+          "rotated",
+          "json",
+          "rss",
+          "note",
+          "api_index"
+        ],
+        "description": "The URLs of the owner's public dashboard, with the token just minted or rotated."
+      },
+      "FeedStatus": {
+        "type": "object",
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "description": "When this dashboard was built (UTC)."
+          },
+          "summary": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResumoStatus"
+              }
+            ],
+            "description": "The number you look at first."
+          },
+          "endpoints": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LinhaStatus"
+            },
+            "description": "One row per monitor, with no secret at all."
+          },
+          "_links": {
+            "type": "object",
+            "description": "This dashboard as JSON, as RSS and the API index."
+          }
+        },
+        "required": [
+          "generated_at",
+          "summary",
+          "endpoints",
+          "_links"
+        ],
+        "description": "The owner's whole status dashboard, addressable by URL. The token in the path IS the credential — whoever has the link, reads."
+      },
+      "ResumoStatus": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "description": "Monitors on the dashboard."
+          },
+          "ok": {
+            "type": "integer",
+            "description": "Active and healthy."
+          },
+          "overdue": {
+            "type": "integer",
+            "description": "Active and silent beyond the interval."
+          },
+          "waiting_first_ping": {
+            "type": "integer",
+            "description": "Active ones that never pinged."
+          },
+          "inactive": {
+            "type": "integer",
+            "description": "Deactivated."
+          },
+          "all_ok": {
+            "type": "boolean",
+            "description": "`true` only with at least one monitor, none overdue and none waiting for the first ping — one that never pinged does not count as healthy."
+          }
+        },
+        "required": [
+          "total",
+          "ok",
+          "overdue",
+          "waiting_first_ping",
+          "inactive",
+          "all_ok"
+        ],
+        "description": "The set in numbers. `all_ok` is the field for an external monitor to check without understanding the rest."
+      },
+      "LinhaStatus": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable label of THIS dashboard, derived from the pair (feed token, monitor) — it is not the ingest id, and it changes when the owner rotates the token. The real id does not leave here because `GET /in/:id` asks for no credential: publishing it would give whoever only reads the power to reset the silence counter."
+          },
+          "name": {
+            "type": "string",
+            "description": "Name given by the owner."
+          },
+          "status": {
+            "type": "string",
+            "description": "State in one word."
+          },
+          "healthy": {
+            "type": "boolean",
+            "description": "Whether it is healthy now."
+          },
+          "overdue": {
+            "type": "boolean",
+            "description": "Whether it is silent beyond the interval."
+          },
+          "interval_sec": {
+            "type": "integer",
+            "description": "Tolerated silence, in seconds."
+          },
+          "last_event_at": {
+            "type": "string",
+            "description": "Last ping (UTC).",
+            "nullable": true
+          },
+          "miss_count": {
+            "type": "integer",
+            "description": "How many misses have happened."
+          },
+          "alerts": {
+            "type": "object",
+            "description": "Which alert channels are on: `{ email, url }` — booleans, never the address."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "healthy",
+          "overdue",
+          "interval_sec",
+          "last_event_at",
+          "miss_count",
+          "alerts"
+        ],
+        "description": "A monitor on the public dashboard: enough to know the state, with no token, no e-mail and no ingest id."
+      },
+      "Conta": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID of the account."
+          },
+          "email": {
+            "type": "string",
+            "description": "E-mail confirmed by code."
+          }
+        },
+        "required": [
+          "id",
+          "email"
+        ],
+        "description": "The person behind the session."
+      },
+      "Metricas": {
+        "type": "object",
+        "properties": {
+          "app": {
+            "type": "string",
+            "description": "Product name."
+          },
+          "today": {
+            "type": "string",
+            "description": "Reference day (UTC, YYYY-MM-DD)."
+          },
+          "today_visits": {
+            "type": "integer",
+            "description": "Visits counted today."
+          },
+          "today_contacts": {
+            "type": "integer",
+            "description": "Contact messages received today. Only with `METRICS_TOKEN`: contact does not leave without a token."
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "One record per day of the window, with the counts of each metric."
+          },
+          "usage": {
+            "type": "object",
+            "description": "Usage per product resource — here, monitors."
+          },
+          "accounts": {
+            "type": "object",
+            "description": "Total guests and accounts."
+          },
+          "financeiro": {
+            "type": "object",
+            "description": "Aggregate of the day: `hoje_usd`, `hoje_count`, `rede`. Only with `METRICS_TOKEN`: money does not leave without a token; the full series is `payments`."
+          },
+          "payments": {
+            "type": "object",
+            "description": "Finance summary; only with METRICS_TOKEN."
+          }
+        },
+        "required": [
+          "app",
+          "today",
+          "today_visits",
+          "days",
+          "usage",
+          "accounts"
+        ],
+        "description": "7-day panel. `payments` only shows with the operator token and only on Base mainnet."
+      }
+    }
+  },
+  "paths": {
+    "/okf/{arquivo}": {
+      "get": {
+        "operationId": "get_okf_by_arquivo",
+        "summary": "OKF bundle (Open Knowledge Format v0.1): markdown with frontmatter so an agent reads the whole product without parsing HTML.",
+        "description": "Returns: `text/markdown`. Start at `/okf/index.md`, which lists the bundle.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "arquivo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`text/markdown`. Start at `/okf/index.md`, which lists the bundle."
+          },
+          "404": {
+            "description": "File outside the bundle."
+          }
+        }
+      }
+    },
+    "/.well-known/{arquivo}": {
+      "get": {
+        "operationId": "get_well_known_by_arquivo",
+        "summary": "Machine discovery before the home page: `api-catalog` (RFC 9727, a linkset with the API and the MCP), `security.txt` (RFC 9116) and `mcp-registry-auth` (the official MCP registry key).",
+        "description": "Returns: `application/linkset+json` for the api-catalog; `text/plain` for the other two.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "arquivo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`application/linkset+json` for the api-catalog; `text/plain` for the other two."
+          },
+          "404": {
+            "description": "Name outside the four published."
+          }
+        }
+      }
+    },
+    "/apis.json": {
+      "get": {
+        "operationId": "get_apis_json",
+        "summary": "APIs.json (apisjson.org, 0.19): the index APIs.io harvests — the API, the MCP, OpenAPI, guide and OKF bundle in one file. Also at `/.well-known/apis.json`.",
+        "description": "Returns: `application/json` in the APIs.json 0.19 format: `apis[]` with `baseURL`, `humanURL` and `properties[]`.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "`application/json` in the APIs.json 0.19 format: `apis[]` with `baseURL`, `humanURL` and `properties[]`."
+          }
+        }
+      }
+    },
+    "/api/": {
+      "get": {
+        "operationId": "api_index",
+        "summary": "Self-describing index: the whole API surface, with quota and quickstart.",
+        "description": "Returns: { name, description, build, base_url, docs, conventions, auth, endpoints, quota, mcp, mcp_tools, quickstart }",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "{ name, description, build, base_url, docs, conventions, auth, endpoints, quota, mcp, mcp_tools, quickstart }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "Product name."
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "What the product does, in one sentence."
+                    },
+                    "build": {
+                      "type": "string",
+                      "description": "Deployed commit."
+                    },
+                    "base_url": {
+                      "type": "string",
+                      "description": "Origin this API is serving from."
+                    },
+                    "docs": {
+                      "type": "object",
+                      "description": "Links to llms.txt, llms-full.txt, openapi.json, MCP and the UI."
+                    },
+                    "conventions": {
+                      "type": "object",
+                      "description": "Error format, CORS, x402 and the UI↔API parity rule."
+                    },
+                    "auth": {
+                      "type": "object",
+                      "description": "Each authentication mode and how to obtain it."
+                    },
+                    "endpoints": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      },
+                      "description": "Every endpoint with method, path, auth, absolute URL and what it returns."
+                    },
+                    "quota": {
+                      "type": "object",
+                      "description": "What is free, what costs and how to pay — before you spend a call."
+                    },
+                    "mcp": {
+                      "type": "object",
+                      "description": "Address and transport of the MCP server."
+                    },
+                    "mcp_tools": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Name of each MCP tool."
+                    },
+                    "quickstart": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "The calls that take you from zero to the first monitor."
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "description",
+                    "build",
+                    "base_url",
+                    "docs",
+                    "conventions",
+                    "auth",
+                    "endpoints",
+                    "quota",
+                    "mcp",
+                    "mcp_tools",
+                    "quickstart"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "operationId": "health",
+        "summary": "Liveness and the commit deployed right now — it is how the smoke waits for its own deploy.",
+        "description": "Returns: { ok, app, build, ts }",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "{ ok, app, build, ts }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "description": "Always `true` when the Worker answers."
+                    },
+                    "app": {
+                      "type": "string",
+                      "description": "Product name."
+                    },
+                    "build": {
+                      "type": "string",
+                      "description": "Deployed commit; CI passes the short SHA on deploy."
+                    },
+                    "ts": {
+                      "type": "string",
+                      "description": "Time of the response (UTC, ISO-8601)."
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "app",
+                    "build",
+                    "ts"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mcp": {
+      "post": {
+        "operationId": "post_mcp",
+        "summary": "MCP server over HTTP (Streamable HTTP, JSON-RPC 2.0) — plugs into the client with nothing to install.",
+        "description": "The tools are the operations of this same catalog; the MCP has no backend of its own. `GET /mcp` returns the server card.\nReturns: JSON-RPC 2.0 response (`initialize`, `tools/list` or `tools/call`).\nCredentials go in the usual headers (X-Guest-Token, Authorization, X-PAYMENT) and are forwarded to the API.\nAn exhausted quota comes back as a 402 with accepts[] inside the tool result — pay and repeat.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "JSON-RPC 2.0 response (`initialize`, `tools/list` or `tools/call`)."
+          }
+        }
+      }
+    },
+    "/api/guest": {
+      "post": {
+        "operationId": "create_guest",
+        "summary": "Creates a guest `hp_…` — it is the anonymous owner of your monitors.",
+        "description": "Keep the token: without it there is no way back to the monitors, unless you have already tied them to an e-mail.\nReturns: { token }",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "{ token }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "type": "string",
+                      "description": "The guest, prefix `hp_`. Send it in `X-Guest-Token` or as Bearer."
+                    }
+                  },
+                  "required": [
+                    "token"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/endpoints": {
+      "get": {
+        "operationId": "list_endpoints",
+        "summary": "Lists the owner's monitors, with the state of each one.",
+        "description": "Returns: { endpoints[{id,name,interval_sec,alert_to,alert_url,last_event_at,last_status,last_latency_ms,miss_count,alerted_at,active,healthy,overdue,waiting_first_ping,created_at,ingest_url,token?,status_url?,events_url?,curl_example?,templates?}], guest, billing?{provider,mode,network,chain_id,pay_to,homolog,dev,dev_gate,facilitator,asset,asset_address,faucet,wallets,product,free_max_endpoints,free_min_interval_sec,free_email_alerts,prices,usage,trial} }",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ endpoints[{id,name,interval_sec,alert_to,alert_url,last_event_at,last_status,last_latency_ms,miss_count,alerted_at,active,healthy,overdue,waiting_first_ping,created_at,ingest_url,token?,status_url?,events_url?,curl_example?,templates?}], guest, billing?{provider,mode,network,chain_id,pay_to,homolog,dev,dev_gate,facilitator,asset,asset_address,faucet,wallets,product,free_max_endpoints,free_min_interval_sec,free_email_alerts,prices,usage,trial} }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "endpoints": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Monitor"
+                      },
+                      "description": "The owner's monitors, without the secret fields."
+                    },
+                    "guest": {
+                      "type": "string",
+                      "description": "The guest that owns this list.",
+                      "nullable": true
+                    },
+                    "billing": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/Billing"
+                        }
+                      ],
+                      "description": "Prices and allowance, to decide before creating the next one."
+                    }
+                  },
+                  "required": [
+                    "endpoints",
+                    "guest"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential, or an invalid one. See this endpoint's auth."
+          }
+        }
+      },
+      "post": {
+        "operationId": "create_endpoint",
+        "summary": "Creates a dead-man switch: silence beyond the interval becomes an alert.",
+        "description": "This response is the only one that shows the monitor's `token` and the `templates` — keep them. The second monitor, or an interval below the free minimum, answers **402 with `accepts[]`**: pay and repeat. A miss alerts at most once per 24h (or per interval, if it is longer).\nReturns: { id, name, interval_sec, alert_to, alert_url, last_event_at, last_status, last_latency_ms, miss_count, alerted_at, active, healthy, overdue, waiting_first_ping, created_at, ingest_url, token?, status_url?, events_url?, curl_example?, templates?{ingest_curl,ingest_cron,ingest_n8n,miss_json,miss_url_hint} }",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Name to recognise the monitor in the alert."
+                  },
+                  "interval_sec": {
+                    "type": "integer",
+                    "description": "Tolerated silence, in seconds. Below the free minimum, it costs."
+                  },
+                  "alert_to": {
+                    "type": "string",
+                    "description": "E-mail to alert on a miss; without it, the account is alerted."
+                  },
+                  "alert_url": {
+                    "type": "string",
+                    "description": "Public HTTPS URL that receives a POST on a miss (Slack Incoming, Discord, n8n)."
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              },
+              "example": {
+                "name": "prod cron",
+                "interval_sec": 900,
+                "alert_to": "optional@email.com",
+                "alert_url": "https://n8n.example/webhook/hp"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{ id, name, interval_sec, alert_to, alert_url, last_event_at, last_status, last_latency_ms, miss_count, alerted_at, active, healthy, overdue, waiting_first_ping, created_at, ingest_url, token?, status_url?, events_url?, curl_example?, templates?{ingest_curl,ingest_cron,ingest_n8n,miss_json,miss_url_hint} }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Monitor"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Empty name, invalid interval or an `alert_url` that is not public HTTPS."
+          },
+          "401": {
+            "description": "No credential, or an invalid one. See this endpoint's auth."
+          },
+          "402": {
+            "description": "Quota exceeded. The response carries `accepts[]` (x402, USDC on Base): pay and repeat the same call with `X-PAYMENT`."
+          }
+        }
+      }
+    },
+    "/api/endpoints/{id}": {
+      "get": {
+        "operationId": "get_endpoint",
+        "summary": "State of one monitor — accepts the owner's token or the monitor's own token.",
+        "description": "The monitor token only reads: it lets you put the state on a third-party dashboard without handing over the owner's credential.\nReturns: { id, name, interval_sec, alert_to, alert_url, last_event_at, last_status, last_latency_ms, miss_count, alerted_at, active, healthy, overdue, waiting_first_ping, created_at, ingest_url, token?, status_url?, events_url?, curl_example?, templates?{ingest_curl,ingest_cron,ingest_n8n,miss_json,miss_url_hint} }",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Monitor token, alternative to the `X-Hook-Token` header."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ id, name, interval_sec, alert_to, alert_url, last_event_at, last_status, last_latency_ms, miss_count, alerted_at, active, healthy, overdue, waiting_first_ping, created_at, ingest_url, token?, status_url?, events_url?, curl_example?, templates?{ingest_curl,ingest_cron,ingest_n8n,miss_json,miss_url_hint} }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Monitor"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential, or an invalid one. See this endpoint's auth."
+          },
+          "404": {
+            "description": "The resource does not exist (or is not yours — the API does not tell the two apart on purpose)."
+          }
+        }
+      },
+      "patch": {
+        "operationId": "patch_api_endpoints_by_id",
+        "summary": "Changes the monitor's name, interval or alert channels.",
+        "description": "Lowering the interval below the free minimum costs: the response becomes 402 with `accepts[]` until paid.\nReturns: { ok, endpoint{id,name,interval_sec,alert_to,alert_url,last_event_at,last_status,last_latency_ms,miss_count,alerted_at,active,healthy,overdue,waiting_first_ping,created_at,ingest_url,token?,status_url?,events_url?,curl_example?,templates?} }",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "New monitor name, as it shows in the alert."
+                  },
+                  "interval_sec": {
+                    "type": "integer",
+                    "description": "New tolerated silence, in seconds."
+                  },
+                  "alert_to": {
+                    "type": "string",
+                    "description": "New alert e-mail; `null` turns it off."
+                  },
+                  "alert_url": {
+                    "type": "string",
+                    "description": "New alert URL; `null` turns it off."
+                  }
+                }
+              },
+              "example": {
+                "name": "…",
+                "interval_sec": 300,
+                "alert_to": null,
+                "alert_url": null
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{ ok, endpoint{id,name,interval_sec,alert_to,alert_url,last_event_at,last_status,last_latency_ms,miss_count,alerted_at,active,healthy,overdue,waiting_first_ping,created_at,ingest_url,token?,status_url?,events_url?,curl_example?,templates?} }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "description": "Always `true`."
+                    },
+                    "endpoint": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/Monitor"
+                        }
+                      ],
+                      "description": "The monitor with the change applied."
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "endpoint"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid field in the body."
+          },
+          "401": {
+            "description": "No credential, or an invalid one. See this endpoint's auth."
+          },
+          "402": {
+            "description": "Quota exceeded. The response carries `accepts[]` (x402, USDC on Base): pay and repeat the same call with `X-PAYMENT`."
+          },
+          "404": {
+            "description": "The resource does not exist (or is not yours — the API does not tell the two apart on purpose)."
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete_endpoint",
+        "summary": "Deactivates the owner's monitor; it stops taking pings and alerting.",
+        "description": "Returns: { ok }",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ ok }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential, or an invalid one. See this endpoint's auth."
+          },
+          "404": {
+            "description": "The resource does not exist (or is not yours — the API does not tell the two apart on purpose)."
+          }
+        }
+      }
+    },
+    "/api/endpoints/{id}/events": {
+      "get": {
+        "operationId": "list_events",
+        "summary": "The latest pings received at this monitor's ingest.",
+        "description": "Returns: { events[{at,status,latency_ms,source}] }",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Monitor token, alternative to the `X-Hook-Token` header."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ events[{at,status,latency_ms,source}] }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Ping"
+                      },
+                      "description": "The most recent pings, newest first."
+                    }
+                  },
+                  "required": [
+                    "events"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential, or an invalid one. See this endpoint's auth."
+          },
+          "404": {
+            "description": "The resource does not exist (or is not yours — the API does not tell the two apart on purpose)."
+          }
+        }
+      }
+    },
+    "/in/{id}": {
+      "get": {
+        "operationId": "ping_ingest",
+        "summary": "The ingest URL: this is where your cron or webhook proves it is alive.",
+        "description": "No credential on purpose — the caller is a cron, and the ID is already the secret. It costs nothing and there is no quota per ping.\nReturns: { ok }",
+        "security": [],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ ok }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "description": "Always `true` when the ping was recorded."
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The monitor does not exist or is deactivated."
+          }
+        }
+      },
+      "post": {
+        "operationId": "post_in_by_id",
+        "summary": "The same ingest by POST, for whoever can only send webhooks.",
+        "description": "The body is optional and records `status` and `latency_ms` along with the ping.\nReturns: { ok }",
+        "security": [],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "integer",
+                    "description": "Status of the job that is pinging, to show in `Ping.status`."
+                  },
+                  "latency_ms": {
+                    "type": "integer",
+                    "description": "How long the job took, in ms."
+                  }
+                }
+              },
+              "example": {
+                "status": 200,
+                "latency_ms": 431
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{ ok }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "description": "Always `true` when the ping was recorded."
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The monitor does not exist or is deactivated."
+          }
+        }
+      }
+    },
+    "/api/status-feed": {
+      "get": {
+        "operationId": "status_feed_url",
+        "summary": "Returns (minting it the first time) the public status URL of all your monitors.",
+        "description": "The feed token only reads status: it does not create, change or delete. Whoever has the link sees the dashboard — treat it as a secret.\nReturns: { token, rotated, json, rss, note, api_index }",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ token, rotated, json, rss, note, api_index }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Feed"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential, or an invalid one. See this endpoint's auth."
+          }
+        }
+      },
+      "delete": {
+        "operationId": "status_feed_rotate",
+        "summary": "Rotates the feed token: the previous URL stops working immediately.",
+        "description": "Returns: { token, rotated, json, rss, note, api_index }",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ token, rotated, json, rss, note, api_index }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Feed"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential, or an invalid one. See this endpoint's auth."
+          }
+        }
+      }
+    },
+    "/s/{token}.json": {
+      "get": {
+        "operationId": "get_s_by_token_json",
+        "summary": "The status dashboard as JSON, with no header at all — the token in the path is the credential.",
+        "description": "`summary.all_ok` is the field for an external monitor to check without understanding the rest. The `id` of each row is a label of this dashboard, not the ingest id — rotating the feed changes both.\nReturns: { generated_at, summary{total,ok,overdue,waiting_first_ping,inactive,all_ok}, endpoints[{id,name,status,healthy,overdue,interval_sec,last_event_at,miss_count,alerts}], _links }",
+        "security": [],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ generated_at, summary{total,ok,overdue,waiting_first_ping,inactive,all_ok}, endpoints[{id,name,status,healthy,overdue,interval_sec,last_event_at,miss_count,alerts}], _links }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedStatus"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown feed token."
+          }
+        }
+      }
+    },
+    "/s/{token}.rss": {
+      "get": {
+        "operationId": "get_s_by_token_rss",
+        "summary": "The same dashboard as RSS 2.0, for a feed reader, a chat bot or a status page.",
+        "description": "The `guid` of each item changes when the STATE changes, not on every generation — with a fixed guid the reader would never re-notify.\nReturns: `application/rss+xml` — one item per monitor, with the state in the title.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`application/rss+xml` — one item per monitor, with the state in the title."
+          },
+          "404": {
+            "description": "Unknown feed token."
+          }
+        }
+      }
+    },
+    "/api/templates": {
+      "get": {
+        "operationId": "list_templates",
+        "summary": "Ingest snippets (curl, cron, n8n) and the exact JSON we POST on a miss.",
+        "description": "It exists so nobody guesses the alert format: the `miss_json` here is the same body that arrives at your `alert_url`.\nReturns: { origin, templates{ingest_curl,ingest_cron,ingest_n8n,miss_json,miss_url_hint} }",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "{ origin, templates{ingest_curl,ingest_cron,ingest_n8n,miss_json,miss_url_hint} }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "origin": {
+                      "type": "string",
+                      "description": "Origin used to build the snippets."
+                    },
+                    "templates": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/Templates"
+                        }
+                      ],
+                      "description": "The snippets and the alert body."
+                    }
+                  },
+                  "required": [
+                    "origin",
+                    "templates"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing": {
+      "get": {
+        "operationId": "billing",
+        "summary": "Free allowance, x402 prices in force and the state of the account's trial.",
+        "description": "Check before creating the second monitor or lowering the interval: it is the number IN FORCE, not the documentation's.\nReturns: { provider, mode, network, chain_id, pay_to, homolog, dev, dev_gate, facilitator, asset, asset_address, faucet, wallets, product, free_max_endpoints, free_min_interval_sec, free_email_alerts, prices{extra_endpoint_usd,fast_interval_usd,email_alert_usd,contact_agent_usd}, usage, trial{days,active,days_left?,ends_at,granted?} }",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "{ provider, mode, network, chain_id, pay_to, homolog, dev, dev_gate, facilitator, asset, asset_address, faucet, wallets, product, free_max_endpoints, free_min_interval_sec, free_email_alerts, prices{extra_endpoint_usd,fast_interval_usd,email_alert_usd,contact_agent_usd}, usage, trial{days,active,days_left?,ends_at,granted?} }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Billing"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me": {
+      "get": {
+        "operationId": "get_api_me",
+        "summary": "The session's account, its monitors and the state of the trial.",
+        "description": "Returns: { user{id,email}, endpoints[{id,name,interval_sec,alert_to,alert_url,last_event_at,last_status,last_latency_ms,miss_count,alerted_at,active,healthy,overdue,waiting_first_ping,created_at,ingest_url,token?,status_url?,events_url?,curl_example?,templates?}], trial{days,active,days_left?,ends_at,granted?} }",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ user{id,email}, endpoints[{id,name,interval_sec,alert_to,alert_url,last_event_at,last_status,last_latency_ms,miss_count,alerted_at,active,healthy,overdue,waiting_first_ping,created_at,ingest_url,token?,status_url?,events_url?,curl_example?,templates?}], trial{days,active,days_left?,ends_at,granted?} }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/Conta"
+                        }
+                      ],
+                      "description": "The person who owns the session."
+                    },
+                    "endpoints": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Monitor"
+                      },
+                      "description": "The account's monitors."
+                    },
+                    "trial": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/Trial"
+                        }
+                      ],
+                      "description": "The trial: how many days, whether active and when it ends."
+                    }
+                  },
+                  "required": [
+                    "user",
+                    "endpoints",
+                    "trial"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential, or an invalid one. See this endpoint's auth."
+          }
+        }
+      }
+    },
+    "/api/auth/start": {
+      "post": {
+        "operationId": "post_api_auth_start",
+        "summary": "Sends the 6-digit code by e-mail to create the account or sign in to it.",
+        "description": "Returns: { ok }",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "description": "E-mail that will receive the code."
+                  }
+                },
+                "required": [
+                  "email"
+                ]
+              },
+              "example": {
+                "email": "you@example.com"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{ ok }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "E-mail missing or malformed."
+          },
+          "429": {
+            "description": "Too many requests for the same e-mail."
+          }
+        }
+      }
+    },
+    "/api/auth/verify": {
+      "post": {
+        "operationId": "post_api_auth_verify",
+        "summary": "Exchanges the code for a session — and confirming the e-mail grants the trial on the spot.",
+        "description": "It is the free way out: confirming the e-mail is worth a period without the usage paywall (extra monitor and fast interval). E-mail alerts beyond the first stay paid, because they are SES cost per miss.\nReturns: { ok, token, user{id,email}, trial{days,active,days_left?,ends_at,granted?} }",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "description": "The same e-mail as in `/api/auth/start`."
+                  },
+                  "code": {
+                    "type": "string",
+                    "description": "The 6 digits that arrived by e-mail."
+                  }
+                },
+                "required": [
+                  "email",
+                  "code"
+                ]
+              },
+              "example": {
+                "email": "you@example.com",
+                "code": "123456"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{ ok, token, user{id,email}, trial{days,active,days_left?,ends_at,granted?} }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "description": "Always `true` when the code matched."
+                    },
+                    "token": {
+                      "type": "string",
+                      "description": "Session `sess_…` to use in `Authorization: Bearer`."
+                    },
+                    "user": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/Conta"
+                        }
+                      ],
+                      "description": "The person who just signed in."
+                    },
+                    "trial": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/Trial"
+                        }
+                      ],
+                      "description": "The trial, with `granted: true` when this call is the one that granted it."
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "token",
+                    "user",
+                    "trial"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Wrong or expired code."
+          },
+          "429": {
+            "description": "Too many attempts."
+          }
+        }
+      }
+    },
+    "/api/auth/claim": {
+      "post": {
+        "operationId": "post_api_auth_claim",
+        "summary": "Moves the guest's monitors to the signed-in account.",
+        "description": "Returns: { ok, claimed }",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "guest_token": {
+                    "type": "string",
+                    "description": "Guest `hp_…` whose monitors move to the account."
+                  }
+                },
+                "required": [
+                  "guest_token"
+                ]
+              },
+              "example": {
+                "guest_token": "hp_…"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{ ok, claimed }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "description": "Always `true`."
+                    },
+                    "claimed": {
+                      "type": "integer",
+                      "description": "How many monitors changed owner."
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "claimed"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`guest_token` missing."
+          },
+          "401": {
+            "description": "No credential, or an invalid one. See this endpoint's auth."
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "post_api_auth_logout",
+        "summary": "Invalidates the current session.",
+        "description": "Returns: { ok }",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ ok }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential, or an invalid one. See this endpoint's auth."
+          }
+        }
+      }
+    },
+    "/api/contact": {
+      "post": {
+        "operationId": "contact",
+        "summary": "Talks to support: a human solves Turnstile, an agent pays $0.10 in x402.",
+        "description": "The first agent message is free; after that the backoff is 60s doubling up to a 1-hour cap, announced in `Retry-After`.\nReturns: { ok, path }",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "What to call the person writing."
+                  },
+                  "email": {
+                    "type": "string",
+                    "description": "Where to reply."
+                  },
+                  "message": {
+                    "type": "string",
+                    "description": "What you want to say."
+                  },
+                  "form_ts": {
+                    "type": "integer",
+                    "description": "When the form was opened; it is the anti-robot of the human path."
+                  }
+                },
+                "required": [
+                  "name",
+                  "email",
+                  "message"
+                ]
+              },
+              "example": {
+                "name": "…",
+                "email": "a@example.com",
+                "message": "…",
+                "form_ts": 0
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{ ok, path }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "description": "Always `true` when the message was accepted."
+                    },
+                    "path": {
+                      "type": "string",
+                      "description": "Which path it came through: human with captcha or paid agent."
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "path"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Required field missing."
+          },
+          "402": {
+            "description": "Quota exceeded. The response carries `accepts[]` (x402, USDC on Base): pay and repeat the same call with `X-PAYMENT`."
+          },
+          "429": {
+            "description": "Agent backoff: wait for `Retry-After`."
+          }
+        }
+      }
+    },
+    "/api/visit": {
+      "post": {
+        "operationId": "post_api_visit",
+        "summary": "Ping from the interface that increments the day's visits. Agents need not call it.",
+        "description": "Smoke does not count: `X-MM-Smoke`, User-Agent `mm-smoke` or `smoke: true` in the body come in as `counted: false`.\nReturns: { ok, counted, reason? }",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "p": {
+                    "type": "string",
+                    "description": "Path of the visited page."
+                  },
+                  "smoke": {
+                    "type": "boolean",
+                    "description": "`true` marks the call as a test and it does not enter the count."
+                  }
+                }
+              },
+              "example": {
+                "p": "/"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{ ok, counted, reason? }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "description": "Always `true`."
+                    },
+                    "counted": {
+                      "type": "boolean",
+                      "description": "Whether the visit entered the day's count."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it did not count, when `counted` is `false`."
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "counted"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/metrics": {
+      "get": {
+        "operationId": "get_api_metrics",
+        "summary": "Metrics of the last 7 days. With the operator token, includes payments.",
+        "description": "Without credentials it returns visits, usage and accounts. With `METRICS_TOKEN` as Bearer it adds `payments` — and only on Base mainnet, because staging numbers on a finance panel mislead.\nReturns: { app, today, today_visits, today_contacts?, days, usage, accounts, financeiro?, payments? }",
+        "security": [],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "`Bearer <METRICS_TOKEN>` to include the finance block."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ app, today, today_visits, today_contacts?, days, usage, accounts, financeiro?, payments? }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Metricas"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/credito": {
+      "post": {
+        "operationId": "post_api_credito",
+        "summary": "Top up prepaid credit: pay once with x402 and get the token that debits on any API of the house.",
+        "description": "Returns: { token, saldo_usd, guarde, usar, saldo_em }",
+        "security": [],
+        "parameters": [
+          {
+            "name": "usd",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Package: 1, 5, 10 ou 25 dollars."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ token, saldo_usd, guarde, usar, saldo_em }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "type": "string",
+                      "description": "Bearer token for the balance (`cred_…`). Shown ONCE — it cannot be recovered."
+                    },
+                    "saldo_usd": {
+                      "type": "string",
+                      "description": "Credited balance."
+                    },
+                    "guarde": {
+                      "type": "string",
+                      "description": "Warning that the token is the bearer of the credit."
+                    },
+                    "usar": {
+                      "type": "string",
+                      "description": "How to present the token on paid routes."
+                    },
+                    "saldo_em": {
+                      "type": "string",
+                      "description": "Where to check balance and statement."
+                    }
+                  },
+                  "required": [
+                    "token",
+                    "saldo_usd",
+                    "guarde",
+                    "usar",
+                    "saldo_em"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Package outside the list (1, 5, 10 ou 25)."
+          },
+          "402": {
+            "description": "Unpaid — the body carries the x402 `accepts[]`."
+          }
+        }
+      },
+      "get": {
+        "operationId": "get_api_credito",
+        "summary": "Credit balance and statement — the latest movements, without returning the token.",
+        "description": "Returns: { saldo_micros, saldo_usd, criado_em, movimentos }",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ saldo_micros, saldo_usd, criado_em, movimentos }",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "saldo_micros": {
+                      "type": "integer",
+                      "description": "Balance in micro-dollars (1e-6 USD)."
+                    },
+                    "saldo_usd": {
+                      "type": "string",
+                      "description": "Formatted balance."
+                    },
+                    "criado_em": {
+                      "type": "string",
+                      "description": "When the credit was opened."
+                    },
+                    "movimentos": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      },
+                      "description": "Recent credits and debits, with product and resource."
+                    }
+                  },
+                  "required": [
+                    "saldo_micros",
+                    "saldo_usd",
+                    "criado_em",
+                    "movimentos"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No token, or unknown token."
+          }
+        }
+      }
+    }
+  }
+}

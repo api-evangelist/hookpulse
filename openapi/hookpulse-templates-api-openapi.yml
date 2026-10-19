@@ -1,8 +1,8 @@
 openapi: 3.2.0
 info:
   title: HookPulse Templates API
-  version: 2d690e87
-  description: 'Dead-man switch for webhooks/cron. Index: GET /api/.'
+  version: 1d751aaf
+  description: Monitor scheduled tasks and receive alerts for missing check-ins. Read GET /api/ for the API index.
 servers:
 - url: https://hookpulse.net
 tags:
@@ -11,14 +11,14 @@ paths:
   /api/templates:
     get:
       operationId: list_templates
-      summary: Ingest snippets (curl, cron, n8n) and the exact JSON we POST on a miss
-      description: 'It exists so nobody guesses the alert format: the `miss_json` here is the same body that arrives at your `alert_url`.
+      summary: Ingest snippets (curl, cron, n8n) and the exact JSON we POST on a miss and on a…
+      description: 'It exists so nobody guesses the alert format: `miss_json` and `recovery_json` here are the same bodies that arrive at your `alert_url`. Slack and Discord receive only the field they read.
 
-        Returns: { origin, templates{ingest_curl,ingest_cron,ingest_n8n,miss_json,miss_url_hint} }'
+        Returns: { origin, templates{ingest_curl,ingest_cron,ingest_n8n,miss_json,recovery_json,miss_url_hint,github_actions} }'
       security: []
       responses:
         '200':
-          description: '{ origin, templates{ingest_curl,ingest_cron,ingest_n8n,miss_json,miss_url_hint} }'
+          description: '{ origin, templates{ingest_curl,ingest_cron,ingest_n8n,miss_json,recovery_json,miss_url_hint,github_actions} }'
           content:
             application/json:
               schema:
@@ -52,19 +52,51 @@ components:
           description: How to call the ingest from n8n.
         miss_json:
           type: string
-          description: The exact JSON we POST to `alert_url` when the silence becomes a miss.
+          description: 'The exact JSON we POST to `alert_url` when a monitor goes bad. `reason` says which way: `silence` (it stopped pinging) or `fail` (it reported an explicit failure).'
+        recovery_json:
+          type: string
+          description: The JSON we POST when the monitor comes back, with `down_since`, `recovered_at` and `downtime_sec`. It has its own `type` (`hookpulse.recovery`) so an integration filtering by type never shows good news as an incident.
         miss_url_hint:
           type: string
           description: What works as `alert_url` — public HTTPS only.
+        github_actions:
+          type: string
+          description: 'A scheduled GitHub Actions workflow with the HookPulse step at the end: no secret, the job''s OIDC token identifies the repository.'
       required:
       - ingest_curl
       - ingest_cron
       - ingest_n8n
       - miss_json
+      - recovery_json
       - miss_url_hint
-      description: How to ping and what we send when it fails. It is what saves guessing the format.
+      - github_actions
+      description: How to ping, what we send when it fails and what we send when it comes back. It is what saves guessing the format.
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
-      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A `sess_…` session also works.'
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A signed-in account (cookie) also works and takes precedence.'
+    globalAccount:
+      type: apiKey
+      in: cookie
+      name: __Host-mm-auth
+      description: Global session in the product's HttpOnly cookie; writes require exact Origin and X-CSRF-Token.
+    contaChaveApi:
+      type: http
+      scheme: bearer
+      bearerFormat: mmk_…
+      description: 'Account API key: `Authorization: Bearer mmk_…` or `X-Api-Key: mmk_…`. Created on the account page (API keys), valid only in the product where it was created; it acts as the account (or the organization that owns it).'
+    carteiraAgente:
+      type: http
+      scheme: bearer
+      bearerFormat: mmw_…
+      description: 'Wallet credential of an agent without an account (`Authorization: Bearer mmw_…`, 30 days, this product only): POST /api/auth/wallet/agent/start, sign the message with the wallet, POST /api/auth/wallet/agent/token. The owner is `x402:<address>`.'
+x-service-info:
+  categories:
+  - monitoring
+  - cron
+  - devops
+  docs:
+    homepage: https://hookpulse.net/
+    apiReference: https://hookpulse.net/developers
+    llms: https://hookpulse.net/llms.txt

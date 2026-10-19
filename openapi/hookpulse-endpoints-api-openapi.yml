@@ -1,8 +1,8 @@
 openapi: 3.2.0
 info:
   title: HookPulse Endpoints API
-  version: 2d690e87
-  description: 'Dead-man switch for webhooks/cron. Index: GET /api/.'
+  version: 1d751aaf
+  description: Monitor scheduled tasks and receive alerts for missing check-ins. Read GET /api/ for the API index.
 servers:
 - url: https://hookpulse.net
 tags:
@@ -12,12 +12,19 @@ paths:
     get:
       operationId: list_endpoints
       summary: Lists the owner's monitors, with the state of each one
-      description: 'Returns: { endpoints[{id,name,interval_sec,alert_to,alert_url,last_event_at,last_status,last_latency_ms,miss_count,alerted_at,active,healthy,overdue,waiting_first_ping,created_at,ingest_url,token?,status_url?,events_url?,curl_example?,templates?}], guest, billing?{provider,mode,network,chain_id,pay_to,homolog,dev,dev_gate,facilitator,asset,asset_address,faucet,wallets,product,free_max_endpoints,free_min_interval_sec,free_email_alerts,prices,usage,trial} }'
+      description: 'Returns: { endpoints[{id,kind,check?,site?,name,interval_sec,cron,tz,grace_sec,next_expected_at,alert_to,alert_url,last_event_at,last_status,last_latency_ms,last_start_at,last_run_id,last_duration_ms,duration,max_duration_sec,alert_pending,miss_count,alerts_on_hold?,alerted_at,alert_repeat_sec,tags,paused_until,state,active,healthy,overdue,waiting_first_ping,created_at,ingest_url?,token?,status_url?,events_url?,curl_example?,templates?}], tags?, guest, coverage, billing?{provider,mode,network,chain_id,pay_to,homolog,dev,dev_gate,alternavel,gratis?,cobrados?,facilitator,asset,asset_address,faucet,wallets,product,free_max_endpoints,free_min_interval_sec,free_email_alerts,prices,usage,trial} }'
       security:
       - bearerAuth: []
+      parameters:
+      - name: tag
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Only monitors carrying this tag. Repeat it to narrow further — `?tag=prod&tag=backup` returns the monitors that have BOTH. Matched after the same normalisation used when saving, so `PROD` finds `prod`; a tag that does not pass the rule matches nothing.
       responses:
         '200':
-          description: '{ endpoints[{id,name,interval_sec,alert_to,alert_url,last_event_at,last_status,last_latency_ms,miss_count,alerted_at,active,healthy,overdue,waiting_first_ping,created_at,ingest_url,token?,status_url?,events_url?,curl_example?,templates?}], guest, billing?{provider,mode,network,chain_id,pay_to,homolog,dev,dev_gate,facilitator,asset,asset_address,faucet,wallets,product,free_max_endpoints,free_min_interval_sec,free_email_alerts,prices,usage,trial} }'
+          description: '{ endpoints[{id,kind,check?,site?,name,interval_sec,cron,tz,grace_sec,next_expected_at,alert_to,alert_url,last_event_at,last_status,last_latency_ms,last_start_at,last_run_id,last_duration_ms,duration,max_duration_sec,alert_pending,miss_count,alerts_on_hold?,alerted_at,alert_repeat_sec,tags,paused_until,state,active,healthy,overdue,waiting_first_ping,created_at,ingest_url?,token?,status_url?,events_url?,curl_example?,templates?}], tags?, guest, coverage, billing?{provider,mode,network,chain_id,pay_to,homolog,dev,dev_gate,alternavel,gratis?,cobrados?,facilitator,asset,asset_address,faucet,wallets,product,free_max_endpoints,free_min_interval_sec,free_email_alerts,prices,usage,trial} }'
           content:
             application/json:
               schema:
@@ -28,9 +35,18 @@ paths:
                     items:
                       $ref: '#/components/schemas/Monitor'
                     description: The owner's monitors, without the secret fields.
+                  tags:
+                    type: array
+                    items:
+                      type: string
+                    description: The tags you filtered by, echoed back. Absent when you did not filter.
                   guest:
                     type: string
                     description: The guest that owns this list.
+                    nullable: true
+                  coverage:
+                    type: object
+                    description: 'Some monitors are beyond what the owner covers: `total`, `covered`, `on_hold`, `reason` and `plan`. `reason` is `trial_ended`, `plan_ended` or `free_limit` (a guest past the free ten). `plan` is the smallest plan that covers all (`{ id, name }`): buy it with `POST /api/plans/:plan`. A guest signs in first. The monitors on hold keep checking, and their alerts go out after the purchase. `null` when every monitor alerts.'
                     nullable: true
                   billing:
                     allOf:
@@ -39,16 +55,19 @@ paths:
                 required:
                 - endpoints
                 - guest
+                - coverage
         '401':
           description: No credential, or an invalid one. See this endpoint's auth.
       tags:
       - Endpoints
     post:
-      operationId: create_endpoint
-      summary: 'Creates a dead-man switch: silence beyond the interval becomes an alert'
-      description: 'This response is the only one that shows the monitor''s `token` and the `templates` — keep them. The second monitor, or an interval below the free minimum, answers **402 with `accepts[]`**: pay and repeat. A miss alerts at most once per 24h (or per interval, if it is longer).
+      operationId: create_site
+      summary: 'Creates a monitor: a routine that pings us (silence beyond the interval becomes…'
+      description: 'With `check` the monitor is a site: HookPulse calls `check.url` every `interval_sec` (default 300) and alerts when it goes down — two failed checks in a row, one minute apart, from a server whose own connection is proven — and when it answers again. `{"check":{"url":"https://example.com/"}}` is enough; the name defaults to the host. A site has no `cron`, no `max_duration_sec` and no ingest URL. This response is the only one that shows the monitor''s `token` and the `templates` — keep them. The second monitor, or an interval below the free minimum, answers **402 with `accepts[]`**: pay and repeat. A miss alerts at most once per 24h — or per `alert_repeat_sec`, or per interval, whichever is longer. Send `cron`+`tz`+`grace_sec` instead of `interval_sec` for a real schedule: a 03:00 backup is late at 03:01:30, not 24 hours later. `max_duration_sec` catches the other failure: a run that starts and hangs, which plain silence detection only notices at the next scheduled time.
 
-        Returns: { id, name, interval_sec, alert_to, alert_url, last_event_at, last_status, last_latency_ms, miss_count, alerted_at, active, healthy, overdue, waiting_first_ping, created_at, ingest_url, token?, status_url?, events_url?, curl_example?, templates?{ingest_curl,ingest_cron,ingest_n8n,miss_json,miss_url_hint} }'
+        Returns: { id, kind, check?, site?, name, interval_sec, cron, tz, grace_sec, next_expected_at, alert_to, alert_url, last_event_at, last_status, last_latency_ms, last_start_at, last_run_id, last_duration_ms, duration, max_duration_sec, alert_pending, miss_count, alerts_on_hold?, alerted_at, alert_repeat_sec, tags, paused_until, state, active, healthy, overdue, waiting_first_ping, created_at, ingest_url?, token?, status_url?, events_url?, curl_example?, templates?{ingest_curl,ingest_cron,ingest_n8n,miss_json,recovery_json,miss_url_hint,github_actions} }
+
+        A site: `curl -s -XPOST $ORIGIN/api/endpoints -H "X-Guest-Token: $HP" -H ''content-type: application/json'' -d ''{"check":{"url":"https://example.com/","keyword":"Welcome"}}''`'
       security:
       - bearerAuth: []
       requestBody:
@@ -60,10 +79,36 @@ paths:
               properties:
                 name:
                   type: string
-                  description: Name to recognise the monitor in the alert.
+                  description: 'Name to recognise the monitor in the alert — it travels in the e-mail subject, the badge and the public dashboard. Required for a routine: we never invent one for you. A site without it is named after its host. Trimmed, at most 80 characters, any alphabet; punctuation alone and invisible characters are rejected.'
+                check:
+                  type: object
+                  description: 'Makes the monitor a site: `url` (http or https, public; required), `method` (`GET` or `HEAD`, default `GET`), `expect_status` (what counts as up: `200-399` by default, a range `a-b` or one code), `keyword` (text that must be in the first 64 KB of the page; it forces `GET`) and `timeout_ms` (1000 to 30000, default 10000). Redirects are followed.'
                 interval_sec:
                   type: integer
                   description: Tolerated silence, in seconds. Below the free minimum, it costs.
+                cron:
+                  type: string
+                  description: 'Five-field cron expression (`0 3 * * *`). Mutually exclusive with `interval_sec`: with a schedule, the deadline is the scheduled time plus `grace_sec`.'
+                tz:
+                  type: string
+                  description: IANA time zone the `cron` is read in. Default `UTC`. Only with `cron`.
+                grace_sec:
+                  type: integer
+                  description: Seconds of tolerance after the scheduled time before it counts as late. Default 90, minimum 30, maximum 86400. Under the free minimum interval it costs, same rule as `interval_sec`.
+                paused_until:
+                  type: string
+                  description: 'Maintenance window: while this UTC instant is in the future the monitor is not checked. At most 30 days ahead.'
+                max_duration_sec:
+                  type: integer
+                  description: 'Alerts with `reason: "too_long"` when a run opened by `/in/:id/start` has not finished within this many seconds. 60 to 86400; `null` or `0` turns it off. Detection happens on the next 5-minute check.'
+                alert_repeat_sec:
+                  type: integer
+                  description: 'How long before the SAME incident alerts again. Minimum 3600, maximum 2592000 (30 days, effectively "tell me once"); `null` keeps the default of 86400. Your `interval_sec` is the floor: nothing new happened between two checks.'
+                tags:
+                  type: array
+                  items:
+                    type: string
+                  description: 'Up to 8 tags to group this monitor: lower-case letters, digits, `.`, `_` and `-`, at most 32 characters each. A comma-separated string works too. We lower-case and de-duplicate, so `Prod` and `prod` are the same tag.'
                 alert_to:
                   type: string
                   description: E-mail to alert on a miss; without it, the account is alerted.
@@ -79,149 +124,24 @@ paths:
               alert_url: https://n8n.example/webhook/hp
       responses:
         '200':
-          description: '{ id, name, interval_sec, alert_to, alert_url, last_event_at, last_status, last_latency_ms, miss_count, alerted_at, active, healthy, overdue, waiting_first_ping, created_at, ingest_url, token?, status_url?, events_url?, curl_example?, templates?{ingest_curl,ingest_cron,ingest_n8n,miss_json,miss_url_hint} }'
+          description: '{ id, kind, check?, site?, name, interval_sec, cron, tz, grace_sec, next_expected_at, alert_to, alert_url, last_event_at, last_status, last_latency_ms, last_start_at, last_run_id, last_duration_ms, duration, max_duration_sec, alert_pending, miss_count, alerts_on_hold?, alerted_at, alert_repeat_sec, tags, paused_until, state, active, healthy, overdue, waiting_first_ping, created_at, ingest_url?, token?, status_url?, events_url?, curl_example?, templates?{ingest_curl,ingest_cron,ingest_n8n,miss_json,recovery_json,miss_url_hint,github_actions} }'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Monitor'
         '400':
-          description: Empty name, invalid interval or an `alert_url` that is not public HTTPS.
+          description: 'The name answers with a code: `nome_obrigatorio` (missing, empty or blank) or `nome_invalido` (not a string, punctuation only, or carrying control/format characters). Also an invalid interval or an `alert_url` that is not public HTTPS. The schedule answers with a code: `cron_ou_interval` (both sent), `cron_invalido`, `tz_invalida`, `grace_invalido`, `cron_sem_ocorrencia` (never happens within 366 days). The maintenance window answers `pausa_invalida` (not a future instant) or `pausa_longa` (over 30 days). The `check` answers `check_invalid` (not an object), `check_url_invalid`, `check_url_credentials` (user or password in the URL), `check_url_private` (local name or private address), `check_method_invalid`, `check_expect_status_invalid`, `check_keyword_invalid`, `check_timeout_invalid` or `check_with_cron`.'
         '401':
           description: No credential, or an invalid one. See this endpoint's auth.
         '402':
-          description: 'Quota exceeded. The response carries `accepts[]` (x402, USDC on Base): pay and repeat the same call with `X-PAYMENT`.'
-      tags:
-      - Endpoints
-  /api/endpoints/{id}:
-    get:
-      operationId: get_endpoint
-      summary: State of one monitor — accepts the owner's token or the monitor's own token
-      description: 'The monitor token only reads: it lets you put the state on a third-party dashboard without handing over the owner''s credential.
-
-        Returns: { id, name, interval_sec, alert_to, alert_url, last_event_at, last_status, last_latency_ms, miss_count, alerted_at, active, healthy, overdue, waiting_first_ping, created_at, ingest_url, token?, status_url?, events_url?, curl_example?, templates?{ingest_curl,ingest_cron,ingest_n8n,miss_json,miss_url_hint} }'
-      security:
-      - bearerAuth: []
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: token
-        in: query
-        required: false
-        schema:
-          type: string
-        description: Monitor token, alternative to the `X-Hook-Token` header.
-      responses:
-        '200':
-          description: '{ id, name, interval_sec, alert_to, alert_url, last_event_at, last_status, last_latency_ms, miss_count, alerted_at, active, healthy, overdue, waiting_first_ping, created_at, ingest_url, token?, status_url?, events_url?, curl_example?, templates?{ingest_curl,ingest_cron,ingest_n8n,miss_json,miss_url_hint} }'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Monitor'
-        '401':
-          description: No credential, or an invalid one. See this endpoint's auth.
-        '404':
-          description: The resource does not exist (or is not yours — the API does not tell the two apart on purpose).
-      tags:
-      - Endpoints
-    patch:
-      operationId: patch_api_endpoints_by_id
-      summary: Changes the monitor's name, interval or alert channels
-      description: 'Lowering the interval below the free minimum costs: the response becomes 402 with `accepts[]` until paid.
-
-        Returns: { ok, endpoint{id,name,interval_sec,alert_to,alert_url,last_event_at,last_status,last_latency_ms,miss_count,alerted_at,active,healthy,overdue,waiting_first_ping,created_at,ingest_url,token?,status_url?,events_url?,curl_example?,templates?} }'
-      security:
-      - bearerAuth: []
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  description: New monitor name, as it shows in the alert.
-                interval_sec:
-                  type: integer
-                  description: New tolerated silence, in seconds.
-                alert_to:
-                  type: string
-                  description: New alert e-mail; `null` turns it off.
-                alert_url:
-                  type: string
-                  description: New alert URL; `null` turns it off.
-            example:
-              name: …
-              interval_sec: 300
-              alert_to: null
-              alert_url: null
-      responses:
-        '200':
-          description: '{ ok, endpoint{id,name,interval_sec,alert_to,alert_url,last_event_at,last_status,last_latency_ms,miss_count,alerted_at,active,healthy,overdue,waiting_first_ping,created_at,ingest_url,token?,status_url?,events_url?,curl_example?,templates?} }'
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                    description: Always `true`.
-                  endpoint:
-                    allOf:
-                    - $ref: '#/components/schemas/Monitor'
-                    description: The monitor with the change applied.
-                required:
-                - ok
-                - endpoint
-        '400':
-          description: Invalid field in the body.
-        '401':
-          description: No credential, or an invalid one. See this endpoint's auth.
-        '402':
-          description: 'Quota exceeded. The response carries `accepts[]` (x402, USDC on Base): pay and repeat the same call with `X-PAYMENT`.'
-        '404':
-          description: The resource does not exist (or is not yours — the API does not tell the two apart on purpose).
-      tags:
-      - Endpoints
-    delete:
-      operationId: delete_endpoint
-      summary: Deactivates the owner's monitor; it stops taking pings and alerting
-      description: 'Returns: { ok }'
-      security:
-      - bearerAuth: []
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          description: '{ ok }'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Ok'
-        '401':
-          description: No credential, or an invalid one. See this endpoint's auth.
-        '404':
-          description: The resource does not exist (or is not yours — the API does not tell the two apart on purpose).
+          description: 'Payment required. The x402 terms (USDC on Base) come in the `PAYMENT-REQUIRED` header and in `accepts[]`: pay and repeat the same call with `PAYMENT-SIGNATURE` (x402 v2) or `X-PAYMENT` (v1). A standard x402 client such as `@x402/fetch` does this for you.'
       tags:
       - Endpoints
   /api/endpoints/{id}/events:
     get:
       operationId: list_events
       summary: The latest pings received at this monitor's ingest
-      description: 'Returns: { events[{at,status,latency_ms,source}] }'
+      description: 'Returns: { events[{kind,rid,duration_ms,exit_code,at,status,latency_ms,source}] }'
       security:
       - bearerAuth: []
       parameters:
@@ -230,6 +150,8 @@ paths:
         required: true
         schema:
           type: string
+        description: ID of the monitor.
+        example: ID
       - name: token
         in: query
         required: false
@@ -238,7 +160,7 @@ paths:
         description: Monitor token, alternative to the `X-Hook-Token` header.
       responses:
         '200':
-          description: '{ events[{at,status,latency_ms,source}] }'
+          description: '{ events[{kind,rid,duration_ms,exit_code,at,status,latency_ms,source}] }'
           content:
             application/json:
               schema:
@@ -257,8 +179,264 @@ paths:
           description: The resource does not exist (or is not yours — the API does not tell the two apart on purpose).
       tags:
       - Endpoints
+  /api/endpoints/{id}:
+    get:
+      operationId: get_endpoint
+      summary: State of one monitor — accepts the owner's token or the monitor's own token
+      description: 'The monitor token only reads: it lets you put the state on a third-party dashboard without handing over the owner''s credential. With a schedule it is here that `next_expected_at` says when the next run is due. Only this endpoint carries `duration`: `p50_ms` (the low median, so always a duration that really happened) and `max_ms` over the last runs we measured, computed at read time over the event window we already keep — the list does not pay for it.
+
+        Returns: { id, kind, check?, site?, name, interval_sec, cron, tz, grace_sec, next_expected_at, alert_to, alert_url, last_event_at, last_status, last_latency_ms, last_start_at, last_run_id, last_duration_ms, duration, max_duration_sec, alert_pending, miss_count, alerts_on_hold?, alerted_at, alert_repeat_sec, tags, paused_until, state, active, healthy, overdue, waiting_first_ping, created_at, ingest_url?, token?, status_url?, events_url?, curl_example?, templates?{ingest_curl,ingest_cron,ingest_n8n,miss_json,recovery_json,miss_url_hint,github_actions} }'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Monitor ID, from `Monitor.id`.
+        example: ID
+      - name: token
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Monitor token, alternative to the `X-Hook-Token` header.
+      responses:
+        '200':
+          description: '{ id, kind, check?, site?, name, interval_sec, cron, tz, grace_sec, next_expected_at, alert_to, alert_url, last_event_at, last_status, last_latency_ms, last_start_at, last_run_id, last_duration_ms, duration, max_duration_sec, alert_pending, miss_count, alerts_on_hold?, alerted_at, alert_repeat_sec, tags, paused_until, state, active, healthy, overdue, waiting_first_ping, created_at, ingest_url?, token?, status_url?, events_url?, curl_example?, templates?{ingest_curl,ingest_cron,ingest_n8n,miss_json,recovery_json,miss_url_hint,github_actions} }'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Monitor'
+        '401':
+          description: No credential, or an invalid one. See this endpoint's auth.
+        '404':
+          description: The resource does not exist (or is not yours — the API does not tell the two apart on purpose).
+      tags:
+      - Endpoints
+    patch:
+      operationId: patch_api_endpoints_by_id
+      summary: Changes the monitor's name, interval or alert channels
+      description: 'Lowering the interval below the free minimum costs: the response becomes 402 with `accepts[]` until paid. Editing anything else keeps `next_expected_at` where it was — renaming a late monitor does not make it healthy.
+
+        Returns: { id, kind, check?, site?, name, interval_sec, cron, tz, grace_sec, next_expected_at, alert_to, alert_url, last_event_at, last_status, last_latency_ms, last_start_at, last_run_id, last_duration_ms, duration, max_duration_sec, alert_pending, miss_count, alerts_on_hold?, alerted_at, alert_repeat_sec, tags, paused_until, state, active, healthy, overdue, waiting_first_ping, created_at, ingest_url?, token?, status_url?, events_url?, curl_example?, templates?{ingest_curl,ingest_cron,ingest_n8n,miss_json,recovery_json,miss_url_hint,github_actions} }'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: ID of the monitor to change.
+        example: ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: New monitor name, as it shows in the alert. Same rule as on creation — omit it to keep the current one; an empty name is rejected rather than accepted, because a monitor with no name makes its own alert useless.
+                interval_sec:
+                  type: integer
+                  description: New tolerated silence, in seconds. Rejected while a `cron` is set.
+                cron:
+                  type:
+                  - string
+                  - 'null'
+                  description: New cron expression; `null` drops the schedule and puts the monitor back on `interval_sec`.
+                tz:
+                  type:
+                  - string
+                  - 'null'
+                  description: New IANA time zone; `null` goes back to `UTC`.
+                grace_sec:
+                  type:
+                  - integer
+                  - 'null'
+                  description: New tolerance in seconds; `null` goes back to 90.
+                paused_until:
+                  type:
+                  - string
+                  - 'null'
+                  description: 'Maintenance window: while this UTC instant is in the future the monitor is not checked and never alerts. `null` resumes it. At most 30 days ahead.'
+                max_duration_sec:
+                  type:
+                  - integer
+                  - 'null'
+                  description: New ceiling for an open run, 60 to 86400 seconds; `null` or `0` turns it off.
+                alert_repeat_sec:
+                  type:
+                  - integer
+                  - 'null'
+                  description: New gap between repeats of the same incident, 3600 to 2592000 seconds; `null` goes back to 86400.
+                tags:
+                  type:
+                  - array
+                  - 'null'
+                  items:
+                    type: string
+                  description: New tags, replacing the old ones. `null` or `[]` removes them all.
+                check:
+                  type: object
+                  description: 'Only on a site: the fields to change (`url`, `method`, `expect_status`, `keyword`, `timeout_ms`); an absent field stays. A new `url` is another site: its state starts again at `waiting`. A routine does not become a site (`check_not_site`).'
+                alert_to:
+                  type:
+                  - string
+                  - 'null'
+                  description: New alert e-mail; `null` turns it off.
+                alert_url:
+                  type:
+                  - string
+                  - 'null'
+                  description: New alert URL; `null` turns it off.
+            example:
+              name: …
+              interval_sec: 300
+              alert_to: null
+              alert_url: null
+      responses:
+        '200':
+          description: '{ id, kind, check?, site?, name, interval_sec, cron, tz, grace_sec, next_expected_at, alert_to, alert_url, last_event_at, last_status, last_latency_ms, last_start_at, last_run_id, last_duration_ms, duration, max_duration_sec, alert_pending, miss_count, alerts_on_hold?, alerted_at, alert_repeat_sec, tags, paused_until, state, active, healthy, overdue, waiting_first_ping, created_at, ingest_url?, token?, status_url?, events_url?, curl_example?, templates?{ingest_curl,ingest_cron,ingest_n8n,miss_json,recovery_json,miss_url_hint,github_actions} }'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Monitor'
+        '400':
+          description: Invalid field in the body, with the same codes as the creation — `nome_obrigatorio` and `nome_invalido` included.
+        '401':
+          description: No credential, or an invalid one. See this endpoint's auth.
+        '402':
+          description: 'Payment required. The x402 terms (USDC on Base) come in the `PAYMENT-REQUIRED` header and in `accepts[]`: pay and repeat the same call with `PAYMENT-SIGNATURE` (x402 v2) or `X-PAYMENT` (v1). A standard x402 client such as `@x402/fetch` does this for you.'
+        '404':
+          description: The resource does not exist (or is not yours — the API does not tell the two apart on purpose).
+      tags:
+      - Endpoints
+    delete:
+      operationId: delete_endpoint
+      summary: Deactivates the owner's monitor; it stops taking pings and alerting
+      description: 'Returns: { ok }'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: ID of the monitor to deactivate.
+        example: ID
+      responses:
+        '200':
+          description: '{ ok }'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ok'
+        '401':
+          description: No credential, or an invalid one. See this endpoint's auth.
+        '404':
+          description: The resource does not exist (or is not yours — the API does not tell the two apart on purpose).
+      tags:
+      - Endpoints
+  /api/endpoints/{id}/check:
+    post:
+      operationId: check_site
+      summary: Checks a site now and returns what it answered
+      description: 'One call every 10 seconds per destination host, for everyone: the button cannot hammer a site. The first state of a new site comes from here, without an alert — you are looking at it. After that, the state and the alerts come from the check that runs every minute.
+
+        Returns: { ok, status, ms, reason, endpoint{id,kind,check?,site?,name,interval_sec,cron,tz,grace_sec,next_expected_at,alert_to,alert_url,last_event_at,last_status,last_latency_ms,last_start_at,last_run_id,last_duration_ms,duration,max_duration_sec,alert_pending,miss_count,alerts_on_hold?,alerted_at,alert_repeat_sec,tags,paused_until,state,active,healthy,overdue,waiting_first_ping,created_at,ingest_url?,token?,status_url?,events_url?,curl_example?,templates?} }'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: ID of the site monitor, from `Monitor.id`.
+        example: ID
+      responses:
+        '200':
+          description: '{ ok, status, ms, reason, endpoint{id,kind,check?,site?,name,interval_sec,cron,tz,grace_sec,next_expected_at,alert_to,alert_url,last_event_at,last_status,last_latency_ms,last_start_at,last_run_id,last_duration_ms,duration,max_duration_sec,alert_pending,miss_count,alerts_on_hold?,alerted_at,alert_repeat_sec,tags,paused_until,state,active,healthy,overdue,waiting_first_ping,created_at,ingest_url?,token?,status_url?,events_url?,curl_example?,templates?} }'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    description: '`true` when the site answered as expected.'
+                  status:
+                    type: integer
+                    description: HTTP status; `null` when nothing answered.
+                    nullable: true
+                  ms:
+                    type: integer
+                    description: How long the check took, in ms.
+                  reason:
+                    type: string
+                    description: 'Why it failed: `status`, `keyword`, `timeout`, `dns`, `connection`, `tls`, `private_address` or `network`; `null` when it answered.'
+                    nullable: true
+                  endpoint:
+                    allOf:
+                    - $ref: '#/components/schemas/Monitor'
+                    description: The site monitor after the check.
+                required:
+                - ok
+                - status
+                - ms
+                - reason
+                - endpoint
+        '400':
+          description: '`check_not_site`: the monitor is a routine.'
+        '401':
+          description: No credential, or an invalid one. See this endpoint's auth.
+        '404':
+          description: The resource does not exist (or is not yours — the API does not tell the two apart on purpose).
+        '429':
+          description: '`check_too_soon`, with `retry_after_sec`: this host was checked less than 10 seconds ago.'
+      tags:
+      - Endpoints
 components:
   schemas:
+    Templates:
+      type: object
+      properties:
+        ingest_curl:
+          type: string
+          description: A `curl` that works as proof of life.
+        ingest_cron:
+          type: string
+          description: The equivalent crontab line.
+        ingest_n8n:
+          type: string
+          description: How to call the ingest from n8n.
+        miss_json:
+          type: string
+          description: 'The exact JSON we POST to `alert_url` when a monitor goes bad. `reason` says which way: `silence` (it stopped pinging) or `fail` (it reported an explicit failure).'
+        recovery_json:
+          type: string
+          description: The JSON we POST when the monitor comes back, with `down_since`, `recovered_at` and `downtime_sec`. It has its own `type` (`hookpulse.recovery`) so an integration filtering by type never shows good news as an incident.
+        miss_url_hint:
+          type: string
+          description: What works as `alert_url` — public HTTPS only.
+        github_actions:
+          type: string
+          description: 'A scheduled GitHub Actions workflow with the HookPulse step at the end: no secret, the job''s OIDC token identifies the repository.'
+      required:
+      - ingest_curl
+      - ingest_cron
+      - ingest_n8n
+      - miss_json
+      - recovery_json
+      - miss_url_hint
+      - github_actions
+      description: How to ping, what we send when it fails and what we send when it comes back. It is what saves guessing the format.
     Trial:
       type: object
       properties:
@@ -275,139 +453,28 @@ components:
           type: string
           description: When it ends (UTC).
           nullable: true
-        granted:
-          type: boolean
-          description: '`true` when THIS call granted the trial.'
       required:
       - days
       - active
       - ends_at
-      description: The period without the usage paywall that confirming the e-mail grants. It is the alternative to paying.
-    Monitor:
+      description: The period without the usage paywall that each account gets once, counted from its first use of HookPulse. It is the alternative to paying.
+    Precos:
       type: object
       properties:
-        id:
-          type: string
-          description: Monitor ID; it is the `:id` of the ingest URL.
-        name:
-          type: string
-          description: Name you gave it, to recognise it in the alert.
-        interval_sec:
-          type: integer
-          description: Tolerated silence, in seconds. Past that, it is a miss.
-        alert_to:
-          type: string
-          description: E-mail alerted on a miss.
-          nullable: true
-        alert_url:
-          type: string
-          description: HTTPS URL that receives a POST on a miss (Slack, Discord, n8n).
-          nullable: true
-        last_event_at:
-          type: string
-          description: Last ping received (UTC); `null` while it never pinged.
-          nullable: true
-        last_status:
-          type: integer
-          description: HTTP status the last ping sent, when it did.
-          nullable: true
-        last_latency_ms:
-          type: integer
-          description: Latency reported in the last ping, in ms.
-          nullable: true
-        miss_count:
-          type: integer
-          description: How many times this monitor has gone silent.
-        alerted_at:
-          type: string
-          description: When the last alert went out — it is what holds the 1 alert/24h cap.
-          nullable: true
-        active:
-          type: boolean
-          description: Whether the monitor is on.
-        healthy:
-          type: boolean
-          description: '`true` when it has pinged at least once and is not overdue.'
-        overdue:
-          type: boolean
-          description: '`true` when the silence passed `interval_sec`.'
-        waiting_first_ping:
-          type: boolean
-          description: '`true` while it never pinged. Neither healthy nor overdue: nobody has wired it yet.'
-        created_at:
-          type: string
-          description: When the monitor was created (UTC).
-        ingest_url:
-          type: string
-          description: The URL your cron/webhook calls to prove life.
-        token:
-          type: string
-          description: Read token of this monitor. Only comes on creation and to the owner.
-        status_url:
-          type: string
-          description: Status of this monitor with the token already in the query.
-        events_url:
-          type: string
-          description: Latest pings with the token already in the query.
-        curl_example:
-          type: string
-          description: The ingest `curl`, ready to paste in the cron.
-        templates:
-          allOf:
-          - $ref: '#/components/schemas/Templates'
-          description: Ingest snippets and the alert body, with this monitor already in them.
+        extra_endpoint_usd:
+          type: number
+          description: Monitor beyond the allowance.
+        fast_interval_usd:
+          type: number
+          description: Interval below the free minimum.
+        email_alert_usd:
+          type: number
+          description: E-mail alert registration beyond the first.
       required:
-      - id
-      - name
-      - interval_sec
-      - alert_to
-      - alert_url
-      - last_event_at
-      - last_status
-      - last_latency_ms
-      - miss_count
-      - alerted_at
-      - active
-      - healthy
-      - overdue
-      - waiting_first_ping
-      - created_at
-      - ingest_url
-      description: 'A dead-man switch: the thing you make ping. If the ping stops for longer than `interval_sec`, it becomes `overdue` and the alert goes out.'
-    Templates:
-      type: object
-      properties:
-        ingest_curl:
-          type: string
-          description: A `curl` that works as proof of life.
-        ingest_cron:
-          type: string
-          description: The equivalent crontab line.
-        ingest_n8n:
-          type: string
-          description: How to call the ingest from n8n.
-        miss_json:
-          type: string
-          description: The exact JSON we POST to `alert_url` when the silence becomes a miss.
-        miss_url_hint:
-          type: string
-          description: What works as `alert_url` — public HTTPS only.
-      required:
-      - ingest_curl
-      - ingest_cron
-      - ingest_n8n
-      - miss_json
-      - miss_url_hint
-      description: How to ping and what we send when it fails. It is what saves guessing the format.
-    Ok:
-      type: object
-      properties:
-        ok:
-          type: boolean
-          description: Always `true` — failure comes as a 4xx/5xx status, not as `ok:false`.
-      required:
-      - ok
-      description: Write confirmation with no body of its own to return.
+      - extra_endpoint_usd
+      - fast_interval_usd
+      - email_alert_usd
+      description: Prices in force, in dollars. Read them here, not from the documentation.
     Billing:
       type: object
       properties:
@@ -434,9 +501,21 @@ components:
           type: boolean
           description: 'Development mode: the 402 is simulated.'
         dev_gate:
-          type: string
-          description: How dev mode is unlocked, when it exists.
-          nullable: true
+          type: boolean
+          description: A homologation credential is configured; this grants no access.
+        alternavel:
+          type: boolean
+          description: 'Dev only: a request with `X-MM-Pagamento: real` pays for real instead of in test mode.'
+        gratis:
+          type: array
+          items:
+            type: string
+          description: Temporarily free SKUs.
+        cobrados:
+          type: array
+          items:
+            type: string
+          description: SKUs charged even when `gratis` has `*`.
         facilitator:
           type: string
           description: URL of the facilitator that verifies and settles the payment.
@@ -464,7 +543,7 @@ components:
           description: Shortest interval that is still free. Below it, it costs.
         free_email_alerts:
           type: integer
-          description: Free e-mail alert registrations; the rest is paid (it is SES cost per miss).
+          description: Free e-mail alert registrations; additional registrations are paid.
         prices:
           allOf:
           - $ref: '#/components/schemas/Precos'
@@ -485,6 +564,7 @@ components:
       - homolog
       - dev
       - dev_gate
+      - alternavel
       - facilitator
       - asset
       - asset_address
@@ -498,30 +578,204 @@ components:
       - usage
       - trial
       description: 'Everything that decides whether the next call will cost: x402 configuration, allowance, prices and trial.'
-    Precos:
+    Monitor:
       type: object
       properties:
-        extra_endpoint_usd:
-          type: number
-          description: Monitor beyond the allowance.
-        fast_interval_usd:
-          type: number
-          description: Interval below the free minimum.
-        email_alert_usd:
-          type: number
-          description: E-mail alert registration beyond the first.
-        contact_agent_usd:
-          type: number
-          description: Agent contact.
+        id:
+          type: string
+          description: Monitor ID; it is the `:id` of the ingest URL.
+        kind:
+          type: string
+          description: '`routine` (it pings us) or `site` (we call it).'
+        check:
+          type: object
+          description: 'Only on a site: what HookPulse calls — `url`, `method` (`GET` or `HEAD`), `expect_status` (`200-399`, a range `a-b` or one code), `keyword` (text that must be in the first 64 KB, or `null`) and `timeout_ms`.'
+        site:
+          type: object
+          description: 'Only on a site: `state` (`waiting`, `up` or `down`), `changed_at` (when it last changed), `last_check_at`, `last_ok`, `last_status` (HTTP status, `null` when nothing answered), `last_reason` (why it failed: `status`, `keyword`, `timeout`, `dns`, `connection`, `tls`, `private_address` or `network`; `null` when it answered), `last_ms` and `certificate_until` (HTTPS certificate expiry).'
+        name:
+          type: string
+          description: Name you gave it, to recognise it in the alert.
+        interval_sec:
+          type: integer
+          description: Tolerated silence, in seconds. Past that, it is a miss. With `cron` set it is read-only and mirrors the schedule's window.
+        cron:
+          type: string
+          description: Five-field cron expression, when the monitor runs on a schedule instead of an interval.
+          nullable: true
+        tz:
+          type: string
+          description: IANA time zone the `cron` is read in.
+          nullable: true
+        grace_sec:
+          type: integer
+          description: Tolerance after the scheduled time before it counts as late.
+          nullable: true
+        next_expected_at:
+          type: string
+          description: When the next scheduled run is due (UTC). Computed forward on creation, on patch and on every ping; late is this plus `grace_sec`.
+          nullable: true
+        alert_to:
+          type: string
+          description: E-mail alerted on a miss.
+          nullable: true
+        alert_url:
+          type: string
+          description: HTTPS URL that receives a POST on a miss (Slack, Discord, n8n).
+          nullable: true
+        last_event_at:
+          type: string
+          description: Last ping received (UTC); `null` while it never pinged.
+          nullable: true
+        last_status:
+          type: integer
+          description: HTTP status the last ping sent, when it did.
+          nullable: true
+        last_latency_ms:
+          type: integer
+          description: Latency reported in the last ping, in ms.
+          nullable: true
+        last_start_at:
+          type: string
+          description: When the current run said it started (`/in/:id/start`), while it has not finished.
+          nullable: true
+        last_run_id:
+          type: string
+          description: The `rid` of the run that is currently open, when the `start` carried one.
+          nullable: true
+        last_duration_ms:
+          type: integer
+          description: How long the last run took, measured between its `start` and its outcome.
+          nullable: true
+        duration:
+          type: object
+          description: 'Duration statistics over the last runs we measured: `samples`, `p50_ms` and `max_ms`. `p50_ms` is the low median, so it is always a duration that actually happened. Only on `GET /api/endpoints/:id` — the list does not pay for it. All null when nothing has been measured.'
+        max_duration_sec:
+          type: integer
+          description: 'Ceiling for an open run: past it, the next 5-minute check alerts with `reason: "too_long"`. `null` when it is off.'
+          nullable: true
+        alert_pending:
+          type: string
+          description: 'An outcome waiting for the next 5-minute check to alert: `fail`, `recovery`, or `null` when there is nothing pending.'
+          nullable: true
+        miss_count:
+          type: integer
+          description: How many times this monitor has gone silent.
+        alerts_on_hold:
+          type: boolean
+          description: '`true` when the monitor is beyond what its owner covers. It keeps checking, and its alerts wait for a plan (a guest signs in first). `coverage` on `GET /api/endpoints` tells why. On the list, `GET /api/endpoints/:id` and creation.'
+        alerted_at:
+          type: string
+          description: When the last alert went out — it is what holds the repeat cap.
+          nullable: true
+        alert_repeat_sec:
+          type: integer
+          description: 'EFFECTIVE gap before the same incident alerts again: what you asked for, or your `interval_sec` when that is longer, or the 86400 default.'
+        tags:
+          type: array
+          items:
+            type: string
+          description: The monitor's tags, normalised and sorted. Empty when it has none.
+        paused_until:
+          type: string
+          description: End of the maintenance window (UTC). While it is in the future the monitor is not checked and never alerts.
+          nullable: true
+        state:
+          type: string
+          description: 'The state in one word: `ok`, `late`, `down` (a site that does not answer), `waiting` (never pinged, or a site not checked yet), `paused` or `inactive`. Read this instead of re-deriving precedence from the booleans.'
+        active:
+          type: boolean
+          description: Whether the monitor is on.
+        healthy:
+          type: boolean
+          description: '`true` when it has pinged at least once and is not overdue.'
+        overdue:
+          type: boolean
+          description: '`true` when the silence passed `interval_sec`.'
+        waiting_first_ping:
+          type: boolean
+          description: '`true` while it never pinged. Neither healthy nor overdue: nobody has wired it yet.'
+        created_at:
+          type: string
+          description: When the monitor was created (UTC).
+        ingest_url:
+          type: string
+          description: 'The URL your cron/webhook calls to prove life. Not on a site: a site does not ping.'
+        token:
+          type: string
+          description: Read token of this monitor. Only comes on creation and to the owner.
+        status_url:
+          type: string
+          description: Status of this monitor with the token already in the query.
+        events_url:
+          type: string
+          description: Latest pings with the token already in the query.
+        curl_example:
+          type: string
+          description: The ingest `curl`, ready to paste in the cron.
+        templates:
+          allOf:
+          - $ref: '#/components/schemas/Templates'
+          description: Ingest snippets and the alert body, with this monitor already in them.
       required:
-      - extra_endpoint_usd
-      - fast_interval_usd
-      - email_alert_usd
-      - contact_agent_usd
-      description: Prices in force, in dollars. Read them here, not from the documentation.
+      - id
+      - kind
+      - name
+      - interval_sec
+      - cron
+      - tz
+      - grace_sec
+      - next_expected_at
+      - alert_to
+      - alert_url
+      - last_event_at
+      - last_status
+      - last_latency_ms
+      - last_start_at
+      - last_run_id
+      - last_duration_ms
+      - duration
+      - max_duration_sec
+      - alert_pending
+      - miss_count
+      - alerted_at
+      - alert_repeat_sec
+      - tags
+      - paused_until
+      - state
+      - active
+      - healthy
+      - overdue
+      - waiting_first_ping
+      - created_at
+      description: 'A monitor. A routine (`kind: "routine"`) is a dead-man switch: the thing you make ping. If the ping stops for longer than `interval_sec` — or, with a schedule, past `next_expected_at` plus `grace_sec` — it becomes `overdue` and the alert goes out. A site (`kind: "site"`) is the other way round: HookPulse calls its `check.url` every `interval_sec` and alerts when it goes down (`state: "down"`) and when it is back.'
+    Ok:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          description: Always `true` — failure comes as a 4xx/5xx status, not as `ok:false`.
+      required:
+      - ok
+      description: Write confirmation with no body of its own to return.
     Ping:
       type: object
       properties:
+        kind:
+          type: string
+          description: '`ping` (proof of life), `start` or `fail`.'
+        rid:
+          type: string
+          description: The `rid` this signal carried, when it had one — it is what pairs a start with the check-in that closed it.
+          nullable: true
+        duration_ms:
+          type: integer
+          description: 'How long the run this signal CLOSED took. Only a close measures it: a start has nothing to measure yet, and closing a run we were not tracking would measure against the wrong start.'
+          nullable: true
+        exit_code:
+          type: integer
+          description: The exit status the caller reported in `/in/:id/<0-255>`, when it did.
+          nullable: true
         at:
           type: string
           description: When it arrived (UTC).
@@ -538,13 +792,41 @@ components:
           description: 'Where it came from: `get` or `post`.'
           nullable: true
       required:
+      - kind
+      - rid
+      - duration_ms
+      - exit_code
       - at
       - status
       - latency_ms
       - source
-      description: A ping received at the ingest — the proof of life.
+      description: A ping received at the ingest — the proof of life, or the signal that a run started or failed.
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
-      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A `sess_…` session also works.'
+      description: 'Guest token (`POST /api/guest`) in `X-Guest-Token: hp_…` or `Authorization: Bearer hp_…`. A signed-in account (cookie) also works and takes precedence.'
+    globalAccount:
+      type: apiKey
+      in: cookie
+      name: __Host-mm-auth
+      description: Global session in the product's HttpOnly cookie; writes require exact Origin and X-CSRF-Token.
+    contaChaveApi:
+      type: http
+      scheme: bearer
+      bearerFormat: mmk_…
+      description: 'Account API key: `Authorization: Bearer mmk_…` or `X-Api-Key: mmk_…`. Created on the account page (API keys), valid only in the product where it was created; it acts as the account (or the organization that owns it).'
+    carteiraAgente:
+      type: http
+      scheme: bearer
+      bearerFormat: mmw_…
+      description: 'Wallet credential of an agent without an account (`Authorization: Bearer mmw_…`, 30 days, this product only): POST /api/auth/wallet/agent/start, sign the message with the wallet, POST /api/auth/wallet/agent/token. The owner is `x402:<address>`.'
+x-service-info:
+  categories:
+  - monitoring
+  - cron
+  - devops
+  docs:
+    homepage: https://hookpulse.net/
+    apiReference: https://hookpulse.net/developers
+    llms: https://hookpulse.net/llms.txt
