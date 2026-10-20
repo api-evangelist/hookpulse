@@ -1,1 +1,1083 @@
-{"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"api_index","description":"Full index of the HookPulse API.","inputSchema":{"type":"object","properties":{}}},{"name":"health","description":"Liveness.","inputSchema":{"type":"object","properties":{}}},{"name":"create_guest","description":"Creates a guest token hp_…","inputSchema":{"type":"object","properties":{}}},{"name":"list_endpoints","description":"Lists the guest's/session's endpoints.","inputSchema":{"type":"object","properties":{"guest_token":{"type":"string"}},"required":["guest_token"]}},{"name":"create_endpoint","description":"Creates a dead-man endpoint. May return 402 x402 when it leaves the free tier.","inputSchema":{"type":"object","properties":{"guest_token":{"type":"string"},"name":{"type":"string"},"interval_sec":{"type":"number"},"alert_to":{"type":"string"},"alert_url":{"type":"string"}},"required":["guest_token","name"]}},{"name":"get_endpoint","description":"Status of one endpoint (use the endpoint token if you have it).","inputSchema":{"type":"object","properties":{"id":{"type":"string"},"token":{"type":"string","description":"endpoint token (query)"},"guest_token":{"type":"string"}},"required":["id"]}},{"name":"delete_endpoint","description":"Removes the owner's endpoint.","inputSchema":{"type":"object","properties":{"guest_token":{"type":"string"},"id":{"type":"string"}},"required":["guest_token","id"]}},{"name":"list_events","description":"Latest ingest pings.","inputSchema":{"type":"object","properties":{"id":{"type":"string"},"token":{"type":"string"},"guest_token":{"type":"string"}},"required":["id"]}},{"name":"ping_ingest","description":"Simulates the cron: GET on /in/:id.","inputSchema":{"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}},{"name":"billing","description":"Free plan, x402 prices and the trial offer: sign-up with a confirmed e-mail = 90 days without the usage paywall (`trial` field; with a session it shows the state).","inputSchema":{"type":"object","properties":{}}},{"name":"status_feed_url","description":"Public URL (JSON and RSS) with the status of all the owner's endpoints.","inputSchema":{"type":"object","properties":{"guest_token":{"type":"string"}}}},{"name":"status_feed_rotate","description":"Rotates the status feed token; the previous URL stops working.","inputSchema":{"type":"object","properties":{"guest_token":{"type":"string"}}}},{"name":"list_templates","description":"Ingest snippets and the JSON HookPulse POSTs on a miss.","inputSchema":{"type":"object","properties":{}}},{"name":"contact","description":"Support. Agent without captcha → 402 $0.10 x402. After the 1st message: 429 + Retry-After (backoff).","inputSchema":{"type":"object","properties":{"name":{"type":"string"},"email":{"type":"string"},"message":{"type":"string"},"form_ts":{"type":"number"}},"required":["name","email","message","form_ts"]}}]}}
+{
+  "endpoint": "https://hookpulse.net/mcp",
+  "captured": "2026-10-20",
+  "method": "initialize + tools/list (anonymous, no tool called; roadmap#992)",
+  "protocol_version": "2025-06-18",
+  "server_info": {
+    "name": "HookPulse",
+    "version": "78e0bd5f"
+  },
+  "result": {
+    "tools": [
+      {
+        "name": "api_index",
+        "title": "API index",
+        "description": "Full index of the HookPulse API.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "annotations": {
+          "title": "API index",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "health",
+        "title": "Health",
+        "description": "Liveness.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "annotations": {
+          "title": "Health",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "create_guest",
+        "title": "Create guest",
+        "description": "Creates a guest token hp_… Keep the token: without it there is no way back to the monitors, unless you have already tied them to an e-mail.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "annotations": {
+          "title": "Create guest",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "list_endpoints",
+        "title": "List endpoints",
+        "description": "Lists the guest's/session's endpoints.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "guest_token": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "guest_token"
+          ]
+        },
+        "annotations": {
+          "title": "List endpoints",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "create_endpoint",
+        "title": "Create endpoint",
+        "description": "Create a monitor for a routine. Use cron, tz and grace_sec for a schedule, or interval_sec for a fixed check-in interval. Set max_duration_sec to detect an open run that exceeds its time limit. With `check` the monitor is a site: HookPulse calls `check.url` every `interval_sec` (default 300) and alerts when it goes down — two failed checks in a row, one minute apart, from a server whose own connection is proven — and when it answers again. `{\"check\":{\"url\":\"https://example.com/\"}}` is enough; the name defaults to the host. A site has no `cron`, no `max_duration_sec` and no ingest URL. This response is the only one that shows the monitor's `token` and the `templates` — keep them. A miss alerts at most once per 24h — or per `alert_repeat_sec`, or per interval, whichever is longer. Send `cron`+`tz`+`grace_sec` instead of `interval_sec` for a real schedule: a 03:00 backup is late at 03:01:30, not 24 hours later. `max_duration_sec` catches the other failure: a run that starts and hangs, which plain silence detection only notices at the next scheduled time.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "guest_token": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string",
+              "description": "how you will recognise the routine in an alert; required, trimmed, max 80 chars, punctuation alone is rejected"
+            },
+            "interval_sec": {
+              "type": "number",
+              "description": "Tolerated silence, in seconds."
+            },
+            "cron": {
+              "type": "string",
+              "description": "five-field cron, e.g. 0 3 * * *"
+            },
+            "paused_until": {
+              "type": "string",
+              "description": "maintenance window end (UTC ISO), max 30 days ahead"
+            },
+            "tz": {
+              "type": "string",
+              "description": "IANA time zone for cron, default UTC"
+            },
+            "grace_sec": {
+              "type": "number",
+              "description": "tolerance after the scheduled time, default 90, min 30"
+            },
+            "max_duration_sec": {
+              "type": "number",
+              "description": "ceiling for an open run in seconds, 60..86400; null or 0 turns it off"
+            },
+            "alert_repeat_sec": {
+              "type": "number",
+              "description": "gap before the same incident alerts again, 3600..2592000; null keeps the 86400 default"
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "up to 8 tags to group the monitor; lower-cased, [a-z0-9._-], max 32 chars each"
+            },
+            "alert_to": {
+              "type": "string",
+              "description": "E-mail to alert on a miss; without it, the account is alerted."
+            },
+            "alert_url": {
+              "type": "string",
+              "description": "Public HTTPS URL that receives a POST on a miss (Slack Incoming, Discord, n8n)."
+            }
+          },
+          "required": [
+            "guest_token",
+            "name"
+          ]
+        },
+        "annotations": {
+          "title": "Create endpoint",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": true
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "create_site",
+        "title": "Create site",
+        "description": "Monitor a website: HookPulse calls check.url every interval_sec (default 300) and alerts when it goes down and when it is back. With `check` the monitor is a site: HookPulse calls `check.url` every `interval_sec` (default 300) and alerts when it goes down — two failed checks in a row, one minute apart, from a server whose own connection is proven — and when it answers again. `{\"check\":{\"url\":\"https://example.com/\"}}` is enough; the name defaults to the host. A site has no `cron`, no `max_duration_sec` and no ingest URL. This response is the only one that shows the monitor's `token` and the `templates` — keep them. A miss alerts at most once per 24h — or per `alert_repeat_sec`, or per interval, whichever is longer. Send `cron`+`tz`+`grace_sec` instead of `interval_sec` for a real schedule: a 03:00 backup is late at 03:01:30, not 24 hours later. `max_duration_sec` catches the other failure: a run that starts and hangs, which plain silence detection only notices at the next scheduled time.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "guest_token": {
+              "type": "string"
+            },
+            "check": {
+              "type": "object",
+              "description": "url (http/https, public; required), method (GET or HEAD), expect_status (200-399 by default, a range a-b or one code), keyword (text that must be on the page), timeout_ms (1000..30000)",
+              "properties": {
+                "url": {
+                  "type": "string"
+                },
+                "method": {
+                  "type": "string"
+                },
+                "expect_status": {
+                  "type": "string"
+                },
+                "keyword": {
+                  "type": "string"
+                },
+                "timeout_ms": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "url"
+              ]
+            },
+            "name": {
+              "type": "string",
+              "description": "how you will recognise the site in an alert; default: its host"
+            },
+            "interval_sec": {
+              "type": "number",
+              "description": "seconds between checks, default 300"
+            },
+            "paused_until": {
+              "type": "string",
+              "description": "maintenance window end (UTC ISO), max 30 days ahead"
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Up to 8 tags to group this monitor: lower-case letters, digits, `.`, `_` and `-`, at most 32 characters each. A comma-separated string works too. We lower-case and de-duplicate, so `Prod` and `prod` are the same tag."
+            },
+            "alert_to": {
+              "type": "string",
+              "description": "E-mail to alert on a miss; without it, the account is alerted."
+            },
+            "alert_url": {
+              "type": "string",
+              "description": "Public HTTPS URL that receives a POST on a miss (Slack Incoming, Discord, n8n)."
+            }
+          },
+          "required": [
+            "guest_token",
+            "check"
+          ]
+        },
+        "annotations": {
+          "title": "Create site",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": true
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "check_site",
+        "title": "Check site",
+        "description": "Check a site monitor now. One call every 10 seconds per destination host. One call every 10 seconds per destination host, for everyone: the button cannot hammer a site. The first state of a new site comes from here, without an alert — you are looking at it. After that, the state and the alerts come from the check that runs every minute.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "ID of the site monitor, from `Monitor.id`."
+            },
+            "guest_token": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "guest_token"
+          ]
+        },
+        "annotations": {
+          "title": "Check site",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": true
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "list_sites",
+        "title": "List sites",
+        "description": "The state of every site you monitor (up, down, waiting, paused), with the last check.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "guest_token": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "guest_token"
+          ]
+        },
+        "annotations": {
+          "title": "List sites",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "import_crontab",
+        "title": "Import crontab",
+        "description": "Reads a crontab and proposes one monitor per scheduled line. Without apply=1 nothing is written; the proposal says what was ignored and why. Passwords in the command are redacted. The body is the crontab itself, as `text/plain`. Without `?apply=1` **nothing is written**: you get the proposal — what would become a monitor, what was ignored and why, and what still fits in the free tier. With `apply=1` it is all or nothing, under the same rules as `POST /api/endpoints`. Comments, variables and `@reboot` are ignored (there is no way to know when to expect a reboot); `@daily` and friends become the equivalent expression. The command becomes the monitor name, with passwords and tokens redacted first — the name travels in the alert e-mail, in the public dashboard and in the badge.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "guest_token": {
+              "type": "string"
+            },
+            "crontab": {
+              "type": "string",
+              "description": "the crontab text"
+            },
+            "apply": {
+              "type": "string",
+              "description": "\"1\" to create the monitors"
+            }
+          },
+          "required": [
+            "guest_token",
+            "crontab"
+          ]
+        },
+        "annotations": {
+          "title": "Import crontab",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "get_endpoint",
+        "title": "Get endpoint",
+        "description": "Status of one endpoint (use the endpoint token if you have it). The monitor token only reads: it lets you put the state on a third-party dashboard without handing over the owner's credential. With a schedule it is here that `next_expected_at` says when the next run is due.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "Monitor ID, from `Monitor.id`."
+            },
+            "token": {
+              "type": "string",
+              "description": "endpoint token (query)"
+            },
+            "guest_token": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ]
+        },
+        "annotations": {
+          "title": "Get endpoint",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "delete_endpoint",
+        "title": "Delete endpoint",
+        "description": "Removes the owner's endpoint.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "guest_token": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string",
+              "description": "ID of the monitor to deactivate."
+            }
+          },
+          "required": [
+            "guest_token",
+            "id"
+          ]
+        },
+        "annotations": {
+          "title": "Delete endpoint",
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "list_events",
+        "title": "List events",
+        "description": "Latest ingest pings.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "ID of the monitor."
+            },
+            "token": {
+              "type": "string",
+              "description": "Monitor token, alternative to the `X-Hook-Token` header."
+            },
+            "guest_token": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ]
+        },
+        "annotations": {
+          "title": "List events",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "ping_ingest",
+        "title": "Ping ingest",
+        "description": "Simulates the cron: GET on /in/:id. No credential on purpose — the caller is a cron, and the ID is already the secret.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "Monitor ID, from `Monitor.ingest_url`."
+            }
+          },
+          "required": [
+            "id"
+          ]
+        },
+        "annotations": {
+          "title": "Ping ingest",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "signal_start",
+        "title": "Signal start",
+        "description": "Says the run STARTED. Does not clear the dead-man clock: a routine that starts and hangs still becomes a miss. The next success records the duration. `start` is not proof of life: it does not move `last_event_at` and does not clear the miss counter, so a routine that starts and hangs still becomes a miss at the right time. The next success closes the run and records `last_duration_ms` — pass `?rid=` on both ends when runs can overlap, or the duration is measured against the wrong start. With `max_duration_sec` set on the monitor, a run left open past that ceiling alerts with `reason: \"too_long\"` on the next 5-minute check. Works by GET or POST.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "Monitor ID, from `Monitor.ingest_url`."
+            }
+          },
+          "required": [
+            "id"
+          ]
+        },
+        "annotations": {
+          "title": "Signal start",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "signal_fail",
+        "title": "Signal fail",
+        "description": "Record a failed run. The next five-minute check sends the alert with reason fail. The monitor's alert_repeat_sec controls repeated alerts; the default is 24 hours. Failing is not proof of life either: the clock keeps running. The ingest never sends e-mail and never calls out — it records `alert_pending` and the cron turns it into an alert with `reason: \"fail\"` within 5 minutes, under the same one-per-24h cap. Works by GET or POST.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "Monitor ID, from `Monitor.ingest_url`."
+            }
+          },
+          "required": [
+            "id"
+          ]
+        },
+        "annotations": {
+          "title": "Signal fail",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "signal_exit_code",
+        "title": "Signal exit code",
+        "description": "The shell exit status: 0 behaves like a ping, 1-255 record the code as a failure. `curl -fsS $ORIGIN/in/ID/$?` at the end of a script is the whole integration. `0` behaves exactly like a plain ping; 1 to 255 record the code and leave the failure for the cron.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "Monitor ID, from `Monitor.ingest_url`."
+            },
+            "exit_code": {
+              "type": "number",
+              "description": "Exit status, 0 to 255. Outside that range it is a 400."
+            }
+          },
+          "required": [
+            "id",
+            "exit_code"
+          ]
+        },
+        "annotations": {
+          "title": "Signal exit code",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "ingest_key",
+        "title": "Ingest key",
+        "description": "Returns (minting the first time) the key for /in/<key>/<slug>, where a ping creates its own monitor inside the free tier. Instruments a whole fleet with no setup call per job. One key per owner. The key survives signing in: the crontab you deployed keeps working.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "guest_token": {
+              "type": "string"
+            }
+          }
+        },
+        "annotations": {
+          "title": "Ingest key",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "ingest_key_rotate",
+        "title": "Ingest key rotate",
+        "description": "Rotates the ingest key; the previous one stops creating monitors. Existing ones keep working. Monitors already created keep working — rotating only revokes the power to create new ones.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "guest_token": {
+              "type": "string"
+            }
+          }
+        },
+        "annotations": {
+          "title": "Ingest key rotate",
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "ping_slug",
+        "title": "Ping slug",
+        "description": "Create a monitor on its first check-in. The same slug uses the same monitor. A rejected creation writes no monitor or event. The slug becomes the monitor name and its identity: the same slug always means the same monitor, so a retry never creates a second one. Normalised to lowercase, `[a-z0-9-]`, 40 chars. Works by GET or POST.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "ingestKey": {
+              "type": "string",
+              "description": "Ingest key, from `GET /api/ingest-key`.",
+              "enum": [
+                "hpk_exemplo"
+              ]
+            },
+            "slug": {
+              "type": "string",
+              "description": "Name of the job; it becomes the monitor name."
+            }
+          },
+          "required": [
+            "ingestKey",
+            "slug"
+          ]
+        },
+        "annotations": {
+          "title": "Ping slug",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "signal_slug",
+        "title": "Signal slug",
+        "description": "Send start, fail or an exit code by name, with the ingest key; the first signal of a new name creates its monitor. The same signals as `/in/:id/start`, `/in/:id/fail` and `/in/:id/:exit_code`, for a fleet that only knows the ingest key: the job sends its name, not the monitor id. The first signal of a new name creates the monitor, with the same rules and the same `cron`, `tz` and `grace_sec` as the plain ping by name.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "ingestKey": {
+              "type": "string",
+              "description": "Ingest key, from `GET /api/ingest-key`.",
+              "enum": [
+                "hpk_exemplo"
+              ]
+            },
+            "slug": {
+              "type": "string",
+              "description": "Name of the job; it becomes the monitor name."
+            },
+            "signal": {
+              "type": "string",
+              "description": "start, fail, or the exit code 0 to 255",
+              "enum": [
+                "fail"
+              ]
+            }
+          },
+          "required": [
+            "ingestKey",
+            "slug",
+            "signal"
+          ]
+        },
+        "annotations": {
+          "title": "Signal slug",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "status_feed_url",
+        "title": "Status feed URL",
+        "description": "Public URL (JSON and RSS) with the status of all the owner's endpoints. The feed token only reads status: it does not create, change or delete. Whoever has the link sees the dashboard — treat it as a secret.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "guest_token": {
+              "type": "string"
+            }
+          }
+        },
+        "annotations": {
+          "title": "Status feed URL",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "status_feed_rotate",
+        "title": "Status feed rotate",
+        "description": "Rotates the status feed token; the previous URL stops working.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "guest_token": {
+              "type": "string"
+            }
+          }
+        },
+        "annotations": {
+          "title": "Status feed rotate",
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "list_templates",
+        "title": "List templates",
+        "description": "Ingest snippets and the JSON HookPulse POSTs on a miss. It exists so nobody guesses the alert format: `miss_json` and `recovery_json` here are the same bodies that arrive at your `alert_url`. Slack and Discord receive only the field they read.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "annotations": {
+          "title": "List templates",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "contact",
+        "title": "Contact",
+        "description": "Write to the people behind the product: a question, or a sponsorship/partnership/advertising proposal. One route for a question and for a sponsorship, partnership or ad proposal (`tipo`, with the placements of `GET /api/partners`). One message every 10 seconds per network: one that arrives sooner waits its turn and then goes out — no error. The message reaches the team by e-mail, with `email` as the reply address. For voice, send multipart/form-data: `dados` is this JSON (up to 32 KiB), and `audio` is one WebM, Ogg or M4A audio file (up to 2 MB). Audio can replace message. The browser records up to two minutes. Audio is attached to the owner's e-mail.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "What to call the person writing."
+            },
+            "email": {
+              "type": "string",
+              "description": "Where to reply."
+            },
+            "message": {
+              "type": "string",
+              "description": "What you want to say."
+            },
+            "whatsapp": {
+              "type": "string",
+              "description": "Optional reply number with country code, such as +5561999999999."
+            },
+            "prefer_whatsapp": {
+              "type": "boolean",
+              "description": "Request a WhatsApp reply. Requires whatsapp."
+            },
+            "tipo": {
+              "type": "string",
+              "enum": [
+                "patrocinio",
+                "parceria",
+                "anuncio",
+                "consultoria"
+              ],
+              "description": "Proposal: `patrocinio`, `parceria`, `anuncio` or `consultoria`. Turns on the fields below."
+            },
+            "empresa": {
+              "type": "string",
+              "description": "Who is proposing, when it is a company."
+            },
+            "site": {
+              "type": "string",
+              "description": "Website of who is proposing."
+            },
+            "orcamento": {
+              "type": "string",
+              "enum": [
+                "ate_100",
+                "100_500",
+                "500_2000",
+                "2000_mais",
+                "a_combinar",
+                "ate_2000",
+                "2000_5000",
+                "5000_10000",
+                "10000_mais",
+                "nao_sei"
+              ],
+              "description": "Advertising: `ate_100`, `100_500`, `500_2000`, `2000_mais` or `a_combinar`. Consulting, in US dollars: `ate_2000`, `2000_5000`, `5000_10000`, `10000_mais` or `nao_sei`."
+            },
+            "espaco": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Placement ids from `GET /api/partners`, up to 6."
+            },
+            "duracao": {
+              "type": "string",
+              "enum": [
+                "30",
+                "90",
+                "365"
+              ],
+              "description": "Exposure in days: `30`, `90` or `365`."
+            },
+            "pagamento": {
+              "type": "string",
+              "enum": [
+                "usdc",
+                "deposito",
+                "a_combinar"
+              ]
+            },
+            "projeto": {
+              "type": "string",
+              "enum": [
+                "llm_privado",
+                "voz",
+                "dados_sensiveis",
+                "gpu",
+                "integracao",
+                "outro"
+              ],
+              "description": "Consulting: the kind of project (`llm_privado`, `voz`, `dados_sensiveis`, `gpu`, `integracao` or `outro`)."
+            },
+            "prazo": {
+              "type": "string",
+              "enum": [
+                "agora",
+                "1_mes",
+                "1_3_meses",
+                "explorando"
+              ],
+              "description": "Consulting: when to start (`agora`, `1_mes`, `1_3_meses` or `explorando`)."
+            },
+            "formato": {
+              "type": "string",
+              "enum": [
+                "projeto",
+                "mensal",
+                "assessoria"
+              ],
+              "description": "Consulting: `projeto` (per scope), `mensal` (monthly) or `assessoria` (advisory)."
+            },
+            "pais": {
+              "type": "string",
+              "description": "Consulting: the country of the person asking."
+            },
+            "fuso": {
+              "type": "string",
+              "description": "Consulting: the IANA time zone, such as `America/New_York`."
+            },
+            "horarios": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Consulting: up to 3 times for the call, `YYYY-MM-DDTHH:MM` in that time zone."
+            }
+          },
+          "required": [
+            "name",
+            "email",
+            "message"
+          ]
+        },
+        "annotations": {
+          "title": "Contact",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "securitySchemes": [
+          {
+            "type": "noauth"
+          },
+          {
+            "type": "oauth2",
+            "scopes": [
+              "mcp"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
