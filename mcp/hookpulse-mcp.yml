@@ -34,16 +34,56 @@ tools:
   description: Liveness.
   source_operation: openapi/hookpulse-openapi.json#health
 - name: create_guest
-  description: Creates a guest token hp_… (the anonymous owner of monitors).
+  description: 'Creates a guest token hp_… Keep the token: without it there is no way back to the monitors,
+    unless you have already tied them to an e-mail.'
   source_operation: openapi/hookpulse-openapi.json#create_guest
 - name: list_endpoints
   description: Lists the guest's/session's endpoints.
   source_operation: openapi/hookpulse-openapi.json#list_endpoints
 - name: create_endpoint
-  description: Creates a dead-man endpoint. May return 402 x402 when it leaves the free tier.
+  description: 'Create a monitor for a routine. Use cron, tz and grace_sec for a schedule, or interval_sec
+    for a fixed check-in interval. Set max_duration_sec to detect an open run that exceeds its time limit.
+    With `check` the monitor is a site: HookPulse calls `check.url` every `interval_sec` (default 300)
+    and alerts when it goes down — two failed checks in a row, one minute apart, from a server whose own
+    connection is proven — and when it answers again. `{"check":{"url":"https://example.com/"}}` is enough;
+    the name defaults to the host. A site has no `cron`, no `max_duration_sec` and no ingest URL. This
+    response is the only one that shows the monitor''s `token` and the `templates` — keep them. A miss
+    alerts at most once per 24h — or per `alert_repeat_sec`, or per interval, whichever is longer. Send
+    `cron`+`tz`+`grace_sec` instead of `interval_sec` for a real schedule: a 03:00 backup is late at 03:01:30,
+    not 24 hours later. `max_duration_sec` catches the other failure: a run that starts and hangs, which
+    plain silence detection only notices at the next scheduled time.'
   source_operation: openapi/hookpulse-openapi.json#create_endpoint
+- name: create_site
+  description: 'Monitor a website: HookPulse calls check.url every interval_sec (default 300) and alerts
+    when it goes down and when it is back. With `check` the monitor is a site: HookPulse calls `check.url`
+    every `interval_sec` (default 300) and alerts when it goes down — two failed checks in a row, one
+    minute apart, from a server whose own connection is proven — and when it answers again. `{"check":{"url":"https://example.com/"}}`
+    is enough; the name defaults to the host. A site has no `cron`, no `max_duration_sec` and no ingest
+    URL. This response is the only one that shows the monitor''s `token` and the `templates` — keep them.
+    A miss alerts at most once per 24h — or per `alert_repeat_sec`, or per interval, whichever is longer.
+    Send `cron`+`tz`+`grace_sec` instead of `interval_sec` for a real schedule: a 03:00 backup is late
+    at 03:01:30, not 24 hours later. `max_duration_sec` catches the other failure: a run that starts and
+    hangs, which plain silence detection only notices at the next scheduled time.'
+- name: check_site
+  description: 'Check a site monitor now. One call every 10 seconds per destination host. One call every
+    10 seconds per destination host, for everyone: the button cannot hammer a site. The first state of
+    a new site comes from here, without an alert — you are looking at it. After that, the state and the
+    alerts come from the check that runs every minute.'
+- name: list_sites
+  description: The state of every site you monitor (up, down, waiting, paused), with the last check.
+- name: import_crontab
+  description: 'Reads a crontab and proposes one monitor per scheduled line. Without apply=1 nothing is
+    written; the proposal says what was ignored and why. Passwords in the command are redacted. The body
+    is the crontab itself, as `text/plain`. Without `?apply=1` **nothing is written**: you get the proposal
+    — what would become a monitor, what was ignored and why, and what still fits in the free tier. With
+    `apply=1` it is all or nothing, under the same rules as `POST /api/endpoints`. Comments, variables
+    and `@reboot` are ignored (there is no way to know when to expect a reboot); `@daily` and friends
+    become the equivalent expression. The command becomes the monitor name, with passwords and tokens
+    redacted first — the name travels in the alert e-mail, in the public dashboard and in the badge.'
 - name: get_endpoint
-  description: Status of one endpoint (accepts the monitor's own token).
+  description: 'Status of one endpoint (use the endpoint token if you have it). The monitor token only
+    reads: it lets you put the state on a third-party dashboard without handing over the owner''s credential.
+    With a schedule it is here that `next_expected_at` says when the next run is due.'
   source_operation: openapi/hookpulse-openapi.json#get_endpoint
 - name: delete_endpoint
   description: Removes the owner's endpoint.
@@ -52,22 +92,66 @@ tools:
   description: Latest ingest pings.
   source_operation: openapi/hookpulse-openapi.json#list_events
 - name: ping_ingest
-  description: 'Simulates the cron: GET on /in/:id.'
+  description: 'Simulates the cron: GET on /in/:id. No credential on purpose — the caller is a cron, and
+    the ID is already the secret.'
   source_operation: openapi/hookpulse-openapi.json#ping_ingest
-- name: billing
-  description: Free plan, x402 prices and the trial offer.
-  source_operation: openapi/hookpulse-openapi.json#billing
+- name: signal_start
+  description: 'Says the run STARTED. Does not clear the dead-man clock: a routine that starts and hangs
+    still becomes a miss. The next success records the duration. `start` is not proof of life: it does
+    not move `last_event_at` and does not clear the miss counter, so a routine that starts and hangs still
+    becomes a miss at the right time. The next success closes the run and records `last_duration_ms` —
+    pass `?rid=` on both ends when runs can overlap, or the duration is measured against the wrong start.
+    With `max_duration_sec` set on the monitor, a run left open past that ceiling alerts with `reason:
+    "too_long"` on the next 5-minute check. Works by GET or POST.'
+- name: signal_fail
+  description: 'Record a failed run. The next five-minute check sends the alert with reason fail. The
+    monitor''s alert_repeat_sec controls repeated alerts; the default is 24 hours. Failing is not proof
+    of life either: the clock keeps running. The ingest never sends e-mail and never calls out — it records
+    `alert_pending` and the cron turns it into an alert with `reason: "fail"` within 5 minutes, under
+    the same one-per-24h cap. Works by GET or POST.'
+- name: signal_exit_code
+  description: 'The shell exit status: 0 behaves like a ping, 1-255 record the code as a failure. `curl
+    -fsS $ORIGIN/in/ID/$?` at the end of a script is the whole integration. `0` behaves exactly like a
+    plain ping; 1 to 255 record the code and leave the failure for the cron.'
+- name: ingest_key
+  description: 'Returns (minting the first time) the key for /in/<key>/<slug>, where a ping creates its
+    own monitor inside the free tier. Instruments a whole fleet with no setup call per job. One key per
+    owner. The key survives signing in: the crontab you deployed keeps working.'
+- name: ingest_key_rotate
+  description: Rotates the ingest key; the previous one stops creating monitors. Existing ones keep working.
+    Monitors already created keep working — rotating only revokes the power to create new ones.
+- name: ping_slug
+  description: 'Create a monitor on its first check-in. The same slug uses the same monitor. A rejected
+    creation writes no monitor or event. The slug becomes the monitor name and its identity: the same
+    slug always means the same monitor, so a retry never creates a second one. Normalised to lowercase,
+    `[a-z0-9-]`, 40 chars. Works by GET or POST.'
+- name: signal_slug
+  description: 'Send start, fail or an exit code by name, with the ingest key; the first signal of a new
+    name creates its monitor. The same signals as `/in/:id/start`, `/in/:id/fail` and `/in/:id/:exit_code`,
+    for a fleet that only knows the ingest key: the job sends its name, not the monitor id. The first
+    signal of a new name creates the monitor, with the same rules and the same `cron`, `tz` and `grace_sec`
+    as the plain ping by name.'
 - name: status_feed_url
-  description: Public URL (JSON and RSS) with the status of all the owner's endpoints.
+  description: 'Public URL (JSON and RSS) with the status of all the owner''s endpoints. The feed token
+    only reads status: it does not create, change or delete. Whoever has the link sees the dashboard —
+    treat it as a secret.'
   source_operation: openapi/hookpulse-openapi.json#status_feed_url
 - name: status_feed_rotate
   description: Rotates the status feed token; the previous URL stops working.
   source_operation: openapi/hookpulse-openapi.json#status_feed_rotate
 - name: list_templates
-  description: Ingest snippets and the JSON HookPulse POSTs on a miss.
+  description: 'Ingest snippets and the JSON HookPulse POSTs on a miss. It exists so nobody guesses the
+    alert format: `miss_json` and `recovery_json` here are the same bodies that arrive at your `alert_url`.
+    Slack and Discord receive only the field they read.'
   source_operation: openapi/hookpulse-openapi.json#list_templates
 - name: contact
-  description: Support. Agent without captcha pays $0.10 x402; then 429 + Retry-After.
+  description: 'Write to the people behind the product: a question, or a sponsorship/partnership/advertising
+    proposal. One route for a question and for a sponsorship, partnership or ad proposal (`tipo`, with
+    the placements of `GET /api/partners`). One message every 10 seconds per network: one that arrives
+    sooner waits its turn and then goes out — no error. The message reaches the team by e-mail, with `email`
+    as the reply address. For voice, send multipart/form-data: `dados` is this JSON (up to 32 KiB), and
+    `audio` is one WebM, Ogg or M4A audio file (up to 2 MB). Audio can replace message. The browser records
+    up to two minutes. Audio is attached to the owner''s e-mail.'
   source_operation: openapi/hookpulse-openapi.json#contact
 tool_quality:
   tool_count: 24
@@ -94,3 +178,4 @@ tool_quality:
   scored: false
   note: Facts from the saved tools/list capture (mcp_tool_quality.py); recorded, not scored. Checks learned
     from Glimind's agent-readiness audit.
+tools_count: 24
