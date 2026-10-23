@@ -159,3 +159,9 @@ x-service-info:
     homepage: https://hookpulse.net/
     apiReference: https://hookpulse.net/developers
     llms: https://hookpulse.net/llms.txt
+x-provenance:
+  method: harvested
+  publisher: HookPulse
+  source: https://hookpulse.net/openapi.json
+  note: split by refine-openapis from the provider's own published document, verified by fetch (openapi/_original/*.fetch.json);
+    stamped by stamp-openapi-provenance.py (roadmap#793)
