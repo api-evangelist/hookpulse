@@ -1,0 +1,78 @@
+# Pricing transcribed from the provider's own page — see provenance. Numbers are quoted, not derived.
+generated: '2026-10-28'
+method: searched
+source: https://hookpulse.net/api/billing
+sources:
+- https://hookpulse.net/api/billing
+provenance:
+  tool: engine/economics/harvest_pricing.py
+  run: 20261028T161713
+  grounding: every price_text was found verbatim in the fetched page text
+audience: developer-api
+pricing_basis: usage-other
+delivery:
+  delivery: managed
+  method: page
+  read: '2026-10-28'
+published: true
+note: 'JSON API billing endpoint rendered as HTML; prices paid in USDC on Base via x402. Includes a 7-day
+  trial ("days": 7, not active).'
+plan_count: 3
+currency: USD
+plans:
+- name: extra_endpoint_usd
+  price_text: '"extra_endpoint_usd": 0.1'
+  price: 0.1
+  currency: USD
+  period: per-use
+  unit: extra endpoint
+  included_quota: '"free_max_endpoints": 10'
+- name: fast_interval_usd
+  price_text: '"fast_interval_usd": 0.05'
+  price: 0.05
+  currency: USD
+  period: per-use
+  unit: fast interval
+- name: email_alert_usd
+  price_text: '"email_alert_usd": 0.1'
+  price: 0.1
+  currency: USD
+  period: per-use
+  unit: email alert
+  included_quota: '"free_email_alerts": 1'
+rate_limit_statements:
+- '"free_min_interval_sec": 90'
+- '"free_max_endpoints": 10'
+x-canonical:
+  generated: '2026-11-01'
+  vocabulary: engine/economics/plans-canonical.yml
+  models:
+  - hybrid
+  - subscription
+  units:
+  - message
+  plans:
+  - name: extra_endpoint_usd
+    access: other
+    model: subscription
+    model_how: derived
+    units:
+    - other
+    periods:
+    - other
+  - name: fast_interval_usd
+    access: other
+    model: subscription
+    model_how: derived
+    units:
+    - other
+    periods:
+    - other
+  - name: email_alert_usd
+    access: other
+    model: hybrid
+    model_how: derived
+    units:
+    - message
+    periods:
+    - other
