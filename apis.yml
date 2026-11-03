@@ -4,6 +4,21 @@ description: A dead-man's-switch for cron jobs and webhooks. You create a monito
   not website uptime monitoring; its stated primary consumer is AI agents. Offers a public REST API, a hosted MCP
   server, and llms.txt/OKF agent-readable docs, with x402/USDC micropayments for paid actions.
 url: https://raw.githubusercontent.com/api-evangelist/hookpulse/refs/heads/main/apis.yml
+accessModel:
+  pricing: paid
+  onboarding: unknown
+  trial: false
+  try_now: false
+  public: false
+  label: Paid
+  confidence: high
+  source:
+  - plans
+  - authentication
+  - rate-limits
+  - security
+  generated: '2026-11-02'
+  method: derived
 image: https://hookpulse.net/icon.svg
 created: '2026-09-05'
 modified: '2026-09-05'
