@@ -44,7 +44,7 @@ rate_limit_statements:
 - '"free_min_interval_sec": 90'
 - '"free_max_endpoints": 10'
 x-canonical:
-  generated: '2026-11-02'
+  generated: '2026-11-06'
   vocabulary: engine/economics/plans-canonical.yml
   models:
   - hybrid
