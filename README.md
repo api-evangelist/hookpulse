@@ -64,7 +64,7 @@
 > Full detail: **[Where this data comes from](https://apievangelist.com/about/where-our-data-comes-from)**
 <!-- API-EVANGELIST-PROVENANCE:END -->
 
-A dead-man's-switch for cron jobs and webhooks. You create a monitor and your cron/Stripe/n8n pings its ingest URL on schedule; if pings stop past a tolerated interval, it records a miss and alerts. Explicitly not website uptime monitoring; its stated primary consumer is AI agents. Offers a public REST API, a hosted MCP server, and llms.txt/OKF agent-readable docs, with x402/USDC micropayments for paid actions.
+HookPulse provides a dead‑man's‑switch monitoring service for scheduled tasks, webhooks, and automated workflows. Users configure monitors that periodically ping an ingest endpoint; if the expected pings cease, HookPulse records a miss and sends alerts. The platform targets AI agents and developers, offering a public REST API, a hosted MCP server, and agent‑readable documentation via llms.txt and OKF. It supports micropayments with x402/USDC for paid actions, and emphasizes monitoring of cron jobs, Stripe webhooks, n8n flows, and similar routines rather than traditional website uptime.
 
 **Areas:** Monitoring · Observability · Cron · Webhook · Heartbeat · Dead-mans-switch · Alerting · Status Pages · Agent-Native · MCP · x402 · Micropayments
 
@@ -72,7 +72,7 @@ A dead-man's-switch for cron jobs and webhooks. You create a monitor and your cr
 
 Everything profiled for HookPulse is published on APIs.io rather than in this repository. Start at the provider page — **[apis.io/providers/hookpulse/](https://apis.io/providers/hookpulse/)** — or go straight to one of the APIs or properties below.
 
-### APIs (19)
+### APIs (34)
 
 - [HookPulse Apis.json API](https://apis.io/apis/hookpulse/hookpulse-apis-json-api/) — The Apis.json API from HookPulse — 1 operation(s) for apis.json.
 - [HookPulse Auth API](https://apis.io/apis/hookpulse/hookpulse-auth-api/) — The Auth API from HookPulse — 4 operation(s) for auth.
@@ -93,6 +93,21 @@ Everything profiled for HookPulse is published on APIs.io rather than in this re
 - [HookPulse Templates API](https://apis.io/apis/hookpulse/hookpulse-templates-api/) — The Templates API from HookPulse — 1 operation(s) for templates.
 - [HookPulse Visit API](https://apis.io/apis/hookpulse/hookpulse-visit-api/) — The Visit API from HookPulse — 1 operation(s) for visit.
 - [HookPulse .well Known API](https://apis.io/apis/hookpulse/hookpulse-well-known-api/) — The .well Known API from HookPulse — 1 operation(s) for .well known.
+- [HookPulse Account API](https://apis.io/apis/hookpulse/hookpulse-account-api/) — The Account API from HookPulse — 7 operation(s) for account.
+- [HookPulse Agent.json API](https://apis.io/apis/hookpulse/hookpulse-agent-json-api/) — The Agent.json API from HookPulse — 1 operation(s) for agent.json.
+- [HookPulse Erro Cliente API](https://apis.io/apis/hookpulse/hookpulse-erro-cliente-api/) — The Erro Cliente API from HookPulse — 1 operation(s) for erro cliente.
+- [HookPulse Funil API](https://apis.io/apis/hookpulse/hookpulse-funil-api/) — The Funil API from HookPulse — 3 operation(s) for funil.
+- [HookPulse GitHub API](https://apis.io/apis/hookpulse/hookpulse-github-api/) — The Github API from HookPulse — 2 operation(s) for github.
+- [HookPulse Import API](https://apis.io/apis/hookpulse/hookpulse-import-api/) — The Import API from HookPulse — 1 operation(s) for import.
+- [HookPulse Ingest Key API](https://apis.io/apis/hookpulse/hookpulse-ingest-key-api/) — The Ingest Key API from HookPulse — 1 operation(s) for ingest key.
+- [HookPulse Pagamento API](https://apis.io/apis/hookpulse/hookpulse-pagamento-api/) — The Pagamento API from HookPulse — 1 operation(s) for pagamento.
+- [HookPulse Partners API](https://apis.io/apis/hookpulse/hookpulse-partners-api/) — The Partners API from HookPulse — 1 operation(s) for partners.
+- [HookPulse Plans API](https://apis.io/apis/hookpulse/hookpulse-plans-api/) — The Plans API from HookPulse — 4 operation(s) for plans.
+- [HookPulse Pricing API](https://apis.io/apis/hookpulse/hookpulse-pricing-api/) — The Pricing API from HookPulse — 1 operation(s) for pricing.
+- [HookPulse Sites API](https://apis.io/apis/hookpulse/hookpulse-sites-api/) — The Sites API from HookPulse — 1 operation(s) for sites.
+- [HookPulse Vitrine API](https://apis.io/apis/hookpulse/hookpulse-vitrine-api/) — The Vitrine API from HookPulse — 4 operation(s) for vitrine.
+- [HookPulse Newsletter API](https://apis.io/apis/hookpulse/hookpulse-newsletter-api/) — The Newsletter API from HookPulse — 2 operation(s) for newsletter.
+- [HookPulse X402 API](https://apis.io/apis/hookpulse/hookpulse-x402-api/) — The X402 API from HookPulse — 1 operation(s) for x402.
 
 ### Published properties
 
@@ -114,44 +129,84 @@ Model Context Protocol servers that expose the API to agents.
 
 Which operations an agent can call, which act, and which need a human in the loop.
 
-- [Hookpulse Agentic Access](https://apis.io/agentic-access/hookpulse/hookpulse-agentic-access/)
+- [HookPulse Agentic Access](https://apis.io/agentic-access/hookpulse/hookpulse-agentic-access/)
 
-#### Overlays (1)
+#### JSON Schema (12)
+
+The data models the API reads and writes.
+
+- [Billing](https://apis.io/schemas/hookpulse/hookpulse-billing/)
+- [Conta](https://apis.io/schemas/hookpulse/hookpulse-conta/)
+- [Feed](https://apis.io/schemas/hookpulse/hookpulse-feed/)
+- [FeedStatus](https://apis.io/schemas/hookpulse/hookpulse-feed-status/)
+- [Metricas](https://apis.io/schemas/hookpulse/hookpulse-metricas/)
+- [Monitor](https://apis.io/schemas/hookpulse/hookpulse-monitor/)
+- [MonitorGithub](https://apis.io/schemas/hookpulse/hookpulse-monitor-github/)
+- [Ok](https://apis.io/schemas/hookpulse/hookpulse-ok/)
+- [PaymentQuota](https://apis.io/schemas/hookpulse/hookpulse-payment-quota/)
+- [Ping](https://apis.io/schemas/hookpulse/hookpulse-ping/)
+- [Templates](https://apis.io/schemas/hookpulse/hookpulse-templates/)
+- [Trial](https://apis.io/schemas/hookpulse/hookpulse-trial/)
+
+#### JSON-LD (1)
+
+Linked-data contexts for the provider's vocabulary.
+
+- [Hookpulse Context](https://apis.io/jsonld/hookpulse/hookpulse-context/)
+
+#### Overlays (3)
 
 OpenAPI overlays, including conversational phrasing for each operation.
 
-- [Hookpulse Openapi Overlay](https://apis.io/overlays/hookpulse/hookpulse-openapi-overlay/)
+- [HookPulse Funil Api Certification Overlay](https://apis.io/overlays/hookpulse/hookpulse-funil-api-certification-overlay/)
+- [HookPulse Openapi Overlay](https://apis.io/overlays/hookpulse/hookpulse-openapi-overlay/)
+- [HookPulse Vitrine Api Certification Overlay](https://apis.io/overlays/hookpulse/hookpulse-vitrine-api-certification-overlay/)
+
+#### Governance rules (1)
+
+Spectral rulesets for the provider's contracts.
+
+- [HookPulse API Rules](https://apis.io/rules/hookpulse/hookpulse-rules/)
 
 #### Security (3)
 
 Authentication, trust centre, and vulnerability disclosure.
 
-- [Hookpulse Authentication](https://apis.io/security/hookpulse/hookpulse-authentication/)
-- [Hookpulse Domain Security](https://apis.io/security/hookpulse/hookpulse-domain-security/)
-- [Hookpulse Vulnerability Disclosure](https://apis.io/security/hookpulse/hookpulse-vulnerability-disclosure/)
+- [HookPulse Authentication](https://apis.io/security/hookpulse/hookpulse-authentication/)
+- [HookPulse Domain Security](https://apis.io/security/hookpulse/hookpulse-domain-security/)
+- [HookPulse Vulnerability Disclosure](https://apis.io/security/hookpulse/hookpulse-vulnerability-disclosure/)
 
 #### Plans and pricing (1)
 
 Published plans, tiers and prices.
 
-- [Hookpulse Plans Pricing](https://apis.io/plans/hookpulse/hookpulse-plans-pricing/)
+- [HookPulse Plans Pricing](https://apis.io/plans/hookpulse/hookpulse-plans-pricing/)
 
 #### Rate limits (1)
 
 Published request limits.
 
-- [Hookpulse Rate Limits](https://apis.io/rate-limits/hookpulse/hookpulse-rate-limits/)
+- [HookPulse Rate Limits](https://apis.io/rate-limits/hookpulse/hookpulse-rate-limits/)
+
+#### FinOps (1)
+
+What the API costs to run, by operation.
+
+- [HookPulse Finops](https://apis.io/finops/hookpulse/hookpulse-finops/)
 
 ## Where to find this API
 
 Links to the company's own pages. This repository publishes no copy of their specifications — the canonical document is theirs and lives at the URLs below.
 
 - [Website](https://hookpulse.net)
+- [Documentation](https://hookpulse.net/guides)
 - [API reference](https://hookpulse.net/api/)
 - [Pricing](https://hookpulse.net/api/billing)
+- [Changelog](https://hookpulse.net/changelog)
 - [Security](https://hookpulse.net/.well-known/security.txt)
 - [Terms of service](https://hookpulse.net/terms)
 - [Privacy policy](https://hookpulse.net/privacy)
+- [Status](https://hookpulse.net/status)
 
 ## API Evangelist rating
 
